@@ -840,8 +840,8 @@
                         if (authUser) {
                             attachRealtimeDatabaseListener();
                         } else {
-                            // If rules are public or not yet using Auth, try attaching; if denied, UI reflects status
-                            attachRealtimeDatabaseListener();
+                            dbListenerAttached = false;
+                            updateSyncStatusUI("🔒 Login with Authorized Email for Cloud Sync", false);
                         }
                     });
                 } else {
@@ -924,10 +924,45 @@
             const errElem = document.getElementById("login-error");
             const submitBtn = document.getElementById("login-submit-btn");
 
-            const matchedUser = usersData.find(u =>
+            errElem.classList.add("hidden");
+
+            // 1. यदि Email से लॉगिन कर रहे हैं तो पहले Firebase Auth से साइन-इन करें
+            if (firebaseAuth && enteredId.includes("@")) {
+                try {
+                    if (submitBtn) submitBtn.disabled = true;
+                    await firebaseAuth.signInWithEmailAndPassword(enteredId, enteredPass);
+                } catch (authErr) {
+                    if (submitBtn) submitBtn.disabled = false;
+                    errElem.textContent = "❌ Firebase Auth Error: " + (authErr.message || "Invalid Email/Password");
+                    errElem.classList.remove("hidden");
+                    return;
+                } finally {
+                    if (submitBtn) submitBtn.disabled = false;
+                }
+            }
+
+            // 2. स्थानीय/सिंक किए गए usersData में यूज़र और पासवर्ड जांचें
+            let matchedUser = usersData.find(u =>
                 String(u.id).trim().toLowerCase() === enteredId &&
                 String(u.password) === enteredPass
             );
+
+            // 3. यदि नए ब्राउज़र पर पहली बार अधिकृत ईमेल से लॉगिन हो रहा है और डेटा क्लाउड में मौजूद है
+            if (!matchedUser && firebaseAuth && firebaseAuth.currentUser && firebaseDb) {
+                try {
+                    const snap = await firebaseDb.ref(CLOUD_DB_ROOT + "/usersData").once("value");
+                    const remoteUsers = snap.val();
+                    if (Array.isArray(remoteUsers) && remoteUsers.length > 0) {
+                        usersData = remoteUsers;
+                        saveAllStateToLocal();
+                        matchedUser = usersData.find(u => String(u.id).trim().toLowerCase() === enteredId);
+                    }
+                } catch (dbErr) {
+                    errElem.textContent = "❌ Database Permission Denied: Rules में इस ईमेल को अनुमति नहीं है।";
+                    errElem.classList.remove("hidden");
+                    return;
+                }
+            }
 
             if (!matchedUser) {
                 errElem.textContent = "❌ यह Email / Login ID अधिकृत नहीं है या Password गलत है!";
@@ -943,23 +978,12 @@
                 return;
             }
 
-            // If an email address is entered and Firebase Auth is configured, sign in with Firebase Auth too
-            if (firebaseAuth && enteredId.includes("@")) {
-                try {
-                    if (submitBtn) submitBtn.disabled = true;
-                    await firebaseAuth.signInWithEmailAndPassword(enteredId, enteredPass);
-                } catch (authErr) {
-                    console.warn("Firebase Auth email sign-in note:", authErr.code || authErr.message);
-                } finally {
-                    if (submitBtn) submitBtn.disabled = false;
-                }
-            }
-
             errElem.classList.add("hidden");
             currentSessionUserId = matchedUser.id;
             sessionStorage.setItem("wms_active_user_v34", matchedUser.id);
             document.getElementById("login-password").value = "";
             applyAccessUI();
+            attachRealtimeDatabaseListener();
         }
 
         function logoutUser() {
@@ -1131,7 +1155,6 @@
             return Array.from(totalsMap.entries()).map(([unit, totalQty]) => ({ unit, totalQty }));
         }
 
-        // Calculates Total Units + Total Ltr / Kg from PackSize in Material Master or Description
         function getPickSlipVolumeWeightTotals(items) {
             let totalUnits = 0;
             let totalLtr = 0;
@@ -1162,7 +1185,6 @@
 
                 let matchedVolOrWt = false;
                 for (const txt of candidateTexts) {
-                    // Match patterns like "20 Ltr", "7.5L", "210 LTR", "180 KG", "20KG", "(15 Ltr)"
                     const m = txt.match(/(\d+(?:\.\d+)?)\s*(LTR|L|LITER|LITRE|KG|KGS)\b/i);
                     if (m) {
                         const packVal = parseFloat(m[1]);
@@ -1177,7 +1199,6 @@
                     }
                 }
 
-                // Fallback if UNIT itself is KG or LTR
                 if (!matchedVolOrWt) {
                     const u = String(item.unit || item.UNIT || "").trim().toUpperCase();
                     if (u === "KG" || u === "KGS") totalKg += qty;
