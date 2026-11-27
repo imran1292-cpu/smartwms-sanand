@@ -1,0 +1,2673 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartWMS - Sanand Warehouse Management System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+    <style>
+        @media print {
+            .no-print { display: none !important; }
+            body { background: #fff !important; }
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen">
+
+    <!-- Login Screen -->
+    <div id="login-screen" class="min-h-screen flex items-center justify-center p-4">
+        <div class="bg-white border border-slate-200 rounded-2xl shadow-xl max-w-md w-full p-6 space-y-5">
+            <div class="text-center space-y-1">
+                <h1 class="text-2xl font-extrabold text-slate-900">🏭 SmartWMS Login</h1>
+                <p class="text-xs text-slate-500">Sanand Warehouse Management &amp; Dispatch System</p>
+                <span id="login-sync-status" class="mt-2 inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-800">
+                    💾 Checking Sync Status...
+                </span>
+            </div>
+
+            <form onsubmit="handleLoginSubmit(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Authorized Email ID / Login ID</label>
+                    <input type="text" id="login-id" required placeholder="e.g. name@company.com or admin" class="w-full p-2.5 border rounded-lg text-sm bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Password</label>
+                    <input type="password" id="login-password" required placeholder="Password" class="w-full p-2.5 border rounded-lg text-sm bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <p id="login-error" class="text-xs text-red-600 font-semibold hidden"></p>
+                <button type="submit" id="login-submit-btn" class="w-full py-2.5 bg-blue-600 text-white rounded-lg font-bold text-sm hover:bg-blue-700 shadow">
+                    🔐 Login to SmartWMS
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main App Shell -->
+    <div id="app-shell" class="hidden max-w-7xl mx-auto p-4 space-y-5">
+        <!-- Top Header -->
+        <header class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-wrap justify-between items-center gap-3 no-print">
+            <div class="space-y-1">
+                <div class="flex flex-wrap items-center gap-2">
+                    <h1 class="text-xl font-extrabold text-slate-900">🏭 SmartWMS (Sanand)</h1>
+                    <span id="cloud-sync-badge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                        💾 Local Mode
+                    </span>
+                </div>
+                <p id="session-user-badge" class="text-xs font-semibold text-slate-600"></p>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2">
+                <button id="btn-manage-users" onclick="openUserModal()" class="hidden px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700">
+                    👥 Users &amp; Permissions
+                </button>
+                <button onclick="changeAdminPin()" class="px-3 py-1.5 bg-slate-700 text-white rounded-lg text-xs font-bold hover:bg-slate-800">
+                    🔑 Change Admin PIN
+                </button>
+                <button id="btn-backup" onclick="downloadBackup()" class="hidden px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700">
+                    ⬇️ Backup JSON
+                </button>
+                <label id="lbl-restore" class="hidden px-3 py-1.5 bg-amber-600 text-white rounded-lg text-xs font-bold hover:bg-amber-700 cursor-pointer">
+                    ⬆️ Restore JSON
+                    <input type="file" accept=".json" class="hidden" onchange="restoreBackup(event)">
+                </label>
+                <button onclick="logoutUser()" class="px-3 py-1.5 bg-red-100 text-red-700 rounded-lg text-xs font-bold hover:bg-red-200">
+                    Logout
+                </button>
+            </div>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <nav class="flex flex-wrap gap-2 no-print">
+            <button id="btn-master" data-perm="canMaster" onclick="switchTab('master')" class="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium shadow">
+                📁 Master Data
+            </button>
+            <button id="btn-inward" data-perm="canInward" onclick="switchTab('inward')" class="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg font-medium">
+                📥 Inward &amp; Bulk Stock
+            </button>
+            <button id="btn-dispatch" data-perm="canDispatch" onclick="switchTab('dispatch')" class="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg font-medium">
+                🚚 SAP &amp; Pick Slip
+            </button>
+            <button id="btn-stock" data-perm="canStock" onclick="switchTab('stock')" class="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg font-medium">
+                📊 Stock Report
+            </button>
+            <button id="btn-summary" data-perm="canSummary" onclick="switchTab('summary')" class="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg font-medium">
+                📋 Dispatch Summary
+            </button>
+            <button id="btn-racks" data-perm="canRacks" onclick="switchTab('racks')" class="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg font-medium">
+                🗂️ Bin &amp; Floor Viewer
+            </button>
+            <button id="btn-convert" data-perm="canConvert" onclick="switchTab('convert')" class="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg font-medium">
+                🔄 Repack / Convert
+            </button>
+            <button id="btn-transfer" data-perm="canTransfer" onclick="switchTab('transfer')" class="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg font-medium">
+                🔀 Bin-to-Bin Transfer
+            </button>
+        </nav>
+
+        <!-- Tab 1: Master Data -->
+        <div id="tab-master" class="space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="bg-white border rounded-lg p-4 space-y-3 shadow-sm">
+                    <div class="flex justify-between items-center">
+                        <h3 class="font-bold text-slate-800">🏭 Plant Master</h3>
+                        <button onclick="downloadMasterTemplate('plant')" class="text-xs text-blue-600 font-semibold hover:underline">Template</button>
+                    </div>
+                    <input type="file" id="upload-plant" accept=".xlsx,.xls,.csv" class="block w-full text-xs text-slate-600">
+                    <button onclick="handleMasterUpload('plant')" class="w-full py-2 bg-blue-600 text-white rounded text-xs font-bold hover:bg-blue-700">
+                        Upload Plant Master
+                    </button>
+                </div>
+
+                <div class="bg-white border rounded-lg p-4 space-y-3 shadow-sm">
+                    <div class="flex justify-between items-center">
+                        <h3 class="font-bold text-slate-800">📦 Material Master</h3>
+                        <button onclick="downloadMasterTemplate('material')" class="text-xs text-blue-600 font-semibold hover:underline">Template</button>
+                    </div>
+                    <input type="file" id="upload-material" accept=".xlsx,.xls,.csv" class="block w-full text-xs text-slate-600">
+                    <button onclick="handleMasterUpload('material')" class="w-full py-2 bg-blue-600 text-white rounded text-xs font-bold hover:bg-blue-700">
+                        Upload Material Master
+                    </button>
+                </div>
+
+                <div class="bg-white border rounded-lg p-4 space-y-3 shadow-sm">
+                    <div class="flex justify-between items-center">
+                        <h3 class="font-bold text-slate-800">🏢 Customer Master</h3>
+                        <button onclick="downloadMasterTemplate('customer')" class="text-xs text-blue-600 font-semibold hover:underline">Template</button>
+                    </div>
+                    <input type="file" id="upload-customer" accept=".xlsx,.xls,.csv" class="block w-full text-xs text-slate-600">
+                    <button onclick="handleMasterUpload('customer')" class="w-full py-2 bg-blue-600 text-white rounded text-xs font-bold hover:bg-blue-700">
+                        Upload Customer Master
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-white border rounded-lg p-4 space-y-3 shadow-sm">
+                <div class="flex flex-wrap justify-between items-center gap-2">
+                    <div>
+                        <h3 class="font-bold text-slate-800">📥 Bulk Stock Excel Upload</h3>
+                        <p class="text-xs text-slate-500">एक साथ कई बिन या Line-1 में ओपनिंग/बल्क स्टॉक अपलोड करें।</p>
+                    </div>
+                    <button onclick="downloadStockUploadTemplate()" class="px-3 py-1.5 bg-slate-100 text-slate-700 border rounded text-xs font-bold hover:bg-slate-200">
+                        📄 Download Stock Excel Format
+                    </button>
+                </div>
+                <div class="flex flex-wrap items-center gap-3">
+                    <input type="file" id="upload-stock-excel" accept=".xlsx,.xls,.csv" class="text-xs text-slate-600">
+                    <button onclick="handleBulkStockExcelUpload()" class="px-4 py-2 bg-emerald-600 text-white rounded text-xs font-bold hover:bg-emerald-700">
+                        ⬆️ Upload Bulk Stock
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 2: Inward & Bulk Stock -->
+        <div id="tab-inward" class="space-y-6 hidden">
+            <div class="bg-white border rounded-lg p-4 space-y-4 shadow-sm">
+                <div class="flex flex-wrap justify-between items-center gap-2 border-b pb-3">
+                    <div>
+                        <h3 class="font-bold text-slate-800">📥 Manual Stock Inward (Bins / Line-1)</h3>
+                        <p class="text-xs text-slate-500">मटीरियल कोड डालें, बिन या Line-1 चुनें, और स्टॉक पोस्ट करें।</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <input type="text" id="in-vehicle" placeholder="Vehicle / Ref No." class="p-2 border rounded text-xs w-40">
+                        <button onclick="addInwardRow()" class="px-3 py-2 bg-blue-100 text-blue-800 rounded text-xs font-bold hover:bg-blue-200">
+                            + Add Row
+                        </button>
+                    </div>
+                </div>
+
+                <div id="inward-rows-container" class="space-y-2"></div>
+
+                <button onclick="postAllInwards()" class="w-full py-2.5 bg-emerald-600 text-white rounded-lg font-bold text-sm hover:bg-emerald-700 shadow">
+                    ✅ Post Inward Stock to Warehouse
+                </button>
+            </div>
+
+            <div class="bg-white border rounded-lg p-4 space-y-3 shadow-sm">
+                <h4 class="font-semibold text-slate-700">Recent Inward Entries</h4>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-100 text-xs text-slate-600 border-b">
+                                <th class="p-2">Bin / Floor</th>
+                                <th class="p-2">Material Code</th>
+                                <th class="p-2">Description</th>
+                                <th class="p-2">Unit</th>
+                                <th class="p-2">MRP</th>
+                                <th class="p-2">Qty</th>
+                                <th class="p-2">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inward-list" class="text-sm">
+                            <tr><td colspan="7" class="p-4 text-center text-slate-400">कोई इनवर्ड रिकॉर्ड उपलब्ध नहीं है।</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 3: SAP & Pick Slip -->
+        <div id="tab-dispatch" class="space-y-6 hidden">
+            <div class="bg-white border rounded-lg p-4 space-y-3 shadow-sm">
+                <div class="flex flex-wrap justify-between items-center gap-2">
+                    <div>
+                        <h3 class="font-bold text-slate-800">📄 SAP Sales / Open Order Report Upload</h3>
+                        <p class="text-xs text-slate-500">SAP सेल्स रिपोर्ट अपलोड करके कस्टमर और इनवॉइस के अनुसार Pick Slip बनाएं।</p>
+                    </div>
+                    <button onclick="downloadSAPTemplate()" class="px-3 py-1.5 bg-slate-100 text-slate-700 border rounded text-xs font-bold hover:bg-slate-200">
+                        📄 Download SAP Format
+                    </button>
+                </div>
+                <div class="flex flex-wrap items-center gap-3">
+                    <input type="file" id="upload-sap" accept=".xlsx,.xls,.csv" class="text-xs text-slate-600">
+                    <button onclick="handleSAPUpload()" class="px-4 py-2 bg-purple-600 text-white rounded text-xs font-bold hover:bg-purple-700">
+                        ⬆️ Upload SAP Report
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-white border rounded-lg p-4 space-y-4 shadow-sm">
+                <h4 class="font-semibold text-slate-700">Select Customer &amp; Invoices for Partial / Full Pick Slip</h4>
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-1">Select Customer:</label>
+                    <select id="select-customer" class="p-2 border rounded w-full md:w-1/3 text-sm" onchange="loadCustomerInvoices()">
+                        <option value="">-- पहले SAP रिपोर्ट अपलोड करें --</option>
+                    </select>
+                </div>
+                <div id="invoice-container" class="space-y-2 text-sm text-slate-600 border-t pt-3">
+                    <p class="text-slate-400">कस्टमर चुनने पर पेंडिंग इनवॉइस और मल्टी-बिन / Line-1 सिलेक्शन विकल्प यहाँ दिखाई देंगे।</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 4: Stock Report -->
+        <div id="tab-stock" class="space-y-6 hidden">
+            <div class="bg-white border rounded-lg p-4 space-y-4 shadow-sm">
+                <div class="flex flex-wrap justify-between items-center gap-3">
+                    <div>
+                        <h3 class="font-bold text-slate-800">📊 Current Stock Report (Material Search, Rack-Wise, Line-1 &amp; Empty Bins)</h3>
+                        <p id="stock-report-summary-badge" class="text-xs text-slate-500 mt-0.5">Showing 0 rows</p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <input type="text" id="stock-report-material-search" placeholder="🔍 Search Material Code / Desc..." class="p-2 border rounded text-xs w-48 bg-white" oninput="renderStockReport()">
+
+                        <label class="text-xs font-semibold text-slate-600">Location:</label>
+                        <select id="stock-report-location" class="p-2 border rounded text-xs font-semibold bg-slate-50" onchange="renderStockReport()">
+                            <option value="ALL">All Locations (Racks A–T + Line-1)</option>
+                            <option value="Line-1">Line-1 (Extra Warehouse Floor)</option>
+                            <option value="RACK_A">Rack A (AA01 - AF20)</option>
+                            <option value="RACK_B">Rack B (BA01 - BF20)</option>
+                            <option value="RACK_C">Rack C (CA01 - CF20)</option>
+                            <option value="RACK_D">Rack D (DA01 - DF20)</option>
+                            <option value="RACK_E">Rack E (EA01 - EF20)</option>
+                            <option value="RACK_F">Rack F (FA01 - FF20)</option>
+                            <option value="RACK_G">Rack G (GA01 - GF20)</option>
+                            <option value="RACK_H">Rack H (HA01 - HF20)</option>
+                            <option value="RACK_I">Rack I (IA01 - IF20)</option>
+                            <option value="RACK_J">Rack J (JA01 - JF20)</option>
+                            <option value="RACK_K">Rack K (KA01 - KF20)</option>
+                            <option value="RACK_L">Rack L (LA01 - LF20)</option>
+                            <option value="RACK_M">Rack M (MA01 - MF20)</option>
+                            <option value="RACK_N">Rack N (NA01 - NF20)</option>
+                            <option value="RACK_O">Rack O (OA01 - OF20)</option>
+                            <option value="RACK_P">Rack P (PA01 - PF20)</option>
+                            <option value="RACK_Q">Rack Q (QA01 - QF20)</option>
+                            <option value="RACK_R">Rack R (RA01 - RF20)</option>
+                            <option value="RACK_S">Rack S (SA01 - SF20)</option>
+                            <option value="RACK_T">Rack T (TA01 - TF20)</option>
+                        </select>
+
+                        <label class="text-xs font-semibold text-slate-600">Scope:</label>
+                        <select id="stock-report-scope" class="p-2 border rounded text-xs font-semibold bg-slate-50" onchange="renderStockReport()">
+                            <option value="occupied">Stock Only (Qty &gt; 0)</option>
+                            <option value="with_empty">Stock + Empty Bins</option>
+                            <option value="empty_only">Empty Bins Only</option>
+                        </select>
+
+                        <button onclick="exportStockReportExcel()" class="px-4 py-2 bg-emerald-600 text-white rounded text-xs font-bold hover:bg-emerald-700">📥 Download Excel</button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-100 text-xs text-slate-600 border-b">
+                                <th class="p-2">Storage Bin</th>
+                                <th class="p-2">Material Code</th>
+                                <th class="p-2">Description</th>
+                                <th class="p-2">Unit</th>
+                                <th class="p-2">MRP</th>
+                                <th class="p-2">Qty.</th>
+                            </tr>
+                        </thead>
+                        <tbody id="stock-report-list" class="text-sm">
+                            <tr><td colspan="6" class="p-4 text-center text-slate-400">कोई स्टॉक उपलब्ध नहीं है।</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 5: Dispatch Summary & Reversal -->
+        <div id="tab-summary" class="space-y-6 hidden">
+            <div class="bg-white border rounded-lg p-4 space-y-4 shadow-sm">
+                <div class="flex flex-wrap justify-between items-center gap-2">
+                    <div>
+                        <h3 class="font-bold text-slate-800">Dispatch Summary, Multiple Selection &amp; Admin-Only Reversal</h3>
+                        <p class="text-xs text-red-700 font-semibold">🔒 Pick Slip / Dispatch Reversal केवल Admin PIN / Reversal Permission द्वारा ही संभव है।</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="exportPickSlipExcel()" class="px-4 py-2 bg-emerald-600 text-white rounded text-xs font-bold hover:bg-emerald-700">📊 Pick Slip Excel (MatCode &gt; UNIT)</button>
+                        <button onclick="printSelectedSummarySlips()" class="px-4 py-2 bg-purple-600 text-white rounded text-xs font-bold hover:bg-purple-700">🖨️ Print Selected Pick Slips</button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-100 text-xs text-slate-600 border-b">
+                                <th class="p-2"><input type="checkbox" id="select-all-summary" onclick="toggleAllSummary(this)"> Select</th>
+                                <th class="p-2">Pick Slip No</th>
+                                <th class="p-2">Date</th>
+                                <th class="p-2">Customer</th>
+                                <th class="p-2">Invoice No</th>
+                                <th class="p-2">Storage Bin / Floor</th>
+                                <th class="p-2">Material Code &amp; Desc</th>
+                                <th class="p-2">UNIT</th>
+                                <th class="p-2">MRP</th>
+                                <th class="p-2">Qty</th>
+                                <th class="p-2">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dispatch-summary-list" class="text-sm">
+                            <tr><td colspan="11" class="p-4 text-center text-slate-400">कोई डिस्पच रिकॉर्ड उपलब्ध नहीं है।</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 6: Bin & Floor Viewer -->
+        <div id="tab-racks" class="space-y-6 hidden">
+            <div class="bg-amber-50 border border-amber-300 p-4 rounded-lg flex flex-wrap justify-between items-center gap-4">
+                <div>
+                    <h3 class="font-bold text-amber-950 text-base">🏭 Extra Warehouse Floor Storage: <span class="font-mono bg-amber-200 px-2 py-0.5 rounded">Line-1</span></h3>
+                    <p class="text-xs text-amber-800">फ़्लोर स्टोरेज—बिना किसी बिन या क्वांटिटी सीमा के</p>
+                </div>
+                <div id="line1-summary-card" class="px-4 py-2 bg-white border border-amber-300 rounded-lg text-sm font-mono font-bold text-amber-950 shadow-sm">
+                    Line-1 Total Qty: 0
+                </div>
+            </div>
+
+            <div class="flex justify-between items-center">
+                <h3 class="font-bold text-slate-700">2,400 Bin Layout (Warehouse Bin Viewer)</h3>
+                <select id="select-rack" class="p-2 border rounded bg-white" onchange="renderBins()">
+                    <option value="A">Rack A (AA01 - AF20)</option>
+                    <option value="B">Rack B (BA01 - BF20)</option>
+                    <option value="C">Rack C (CA01 - CF20)</option>
+                    <option value="D">Rack D (DA01 - DF20)</option>
+                    <option value="E">Rack E (EA01 - EF20)</option>
+                    <option value="F">Rack F (FA01 - FF20)</option>
+                    <option value="G">Rack G (GA01 - GF20)</option>
+                    <option value="H">Rack H (HA01 - HF20)</option>
+                    <option value="I">Rack I (IA01 - IF20)</option>
+                    <option value="J">Rack J (JA01 - JF20)</option>
+                    <option value="K">Rack K (KA01 - KF20)</option>
+                    <option value="L">Rack L (LA01 - LF20)</option>
+                    <option value="M">Rack M (MA01 - MF20)</option>
+                    <option value="N">Rack N (NA01 - NF20)</option>
+                    <option value="O">Rack O (OA01 - OF20)</option>
+                    <option value="P">Rack P (PA01 - PF20)</option>
+                    <option value="Q">Rack Q (QA01 - QF20)</option>
+                    <option value="R">Rack R (RA01 - RF20)</option>
+                    <option value="S">Rack S (SA01 - SF20)</option>
+                    <option value="T">Rack T (TA01 - TF20)</option>
+                </select>
+            </div>
+            <div id="bin-grid" class="grid grid-cols-5 md:grid-cols-10 gap-2"></div>
+        </div>
+
+        <!-- Tab 7: Product Repacking / Conversion -->
+        <div id="tab-convert" class="space-y-6 hidden">
+            <div class="bg-amber-50 border border-amber-200 p-5 rounded-lg space-y-4">
+                <div>
+                    <h3 class="font-bold text-amber-950 text-lg">🔄 Product Repacking / Material Conversion (एक प्रोडक्ट से दूसरी प्रोडक्ट बनाना)</h3>
+                    <p class="text-xs text-amber-800">Material Code सर्च करके देखें कि वह मटीरियल किन-किन बिन या Line-1 में है, किस बिन से निकालना है चुनें, और नया प्रोडक्ट तैयार करें।</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-white p-4 border border-red-200 rounded-lg space-y-3 shadow-sm">
+                        <h4 class="font-bold text-red-800 text-sm border-b pb-1">1. Source Product (जो मटीरियल निकालना / खपत करना है)</h4>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">🔍 Search Material Code (किन बिन में है खोजें):</label>
+                            <input type="text" id="conv-source-search" placeholder="Material Code या Description टाइप करें..." class="p-2 border rounded text-xs w-full bg-white" oninput="populateConversionSourceDropdown()">
+                        </div>
+                        <div id="conv-bin-matches" class="text-xs text-blue-900 bg-blue-50 p-2 rounded border border-blue-200">
+                            किसी Material Code को सर्च करें या नीचे लिस्ट से बिन चुनें।
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Select Bin / Line-1 to Pick From:</label>
+                            <select id="conv-source-select" class="p-2 border rounded text-xs w-full bg-slate-50" onchange="onSelectConversionSource()">
+                                <option value="">-- उपलब्ध स्टॉक (Bin / Line-1) चुनें --</option>
+                            </select>
+                        </div>
+                        <div id="conv-source-info" class="text-xs text-slate-600 bg-slate-50 p-2 rounded border">
+                            उपलब्ध स्टॉक: 0
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Consume / Out Qty (कितनी क्वांटिटी निकालनी है):</label>
+                            <input type="number" id="conv-source-qty" placeholder="e.g. 1" class="p-2 border rounded text-sm w-full">
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-4 border border-emerald-200 rounded-lg space-y-3 shadow-sm">
+                        <h4 class="font-bold text-emerald-800 text-sm border-b pb-1">2. Target Product (जो नया मटीरियल तैयार हुआ है)</h4>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">New Material Code:</label>
+                                <input type="text" id="conv-target-mat" placeholder="e.g. 7688213" class="p-2 border rounded text-sm w-full" oninput="autoFillConversionTarget()">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Unit:</label>
+                                <input type="text" id="conv-target-unit" placeholder="e.g. BUCKET" class="p-2 border rounded text-sm w-full">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">New Description:</label>
+                            <input type="text" id="conv-target-desc" placeholder="Material Master से ऑटो-फ़िल या मैनुअल लिखें" class="p-2 border rounded text-xs w-full bg-slate-50">
+                        </div>
+                        <div class="grid grid-cols-3 gap-2">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">New Qty.:</label>
+                                <input type="number" id="conv-target-qty" placeholder="e.g. 10" class="p-2 border rounded text-sm w-full">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">MRP:</label>
+                                <input type="number" id="conv-target-mrp" placeholder="e.g. 2500" class="p-2 border rounded text-sm w-full">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Target Bin / Line-1:</label>
+                                <input type="text" id="conv-target-bin" placeholder="AA01 या Line-1" class="p-2 border rounded text-sm w-full">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <button onclick="executeProductConversion()" class="w-full py-2.5 bg-amber-600 text-white rounded-lg font-bold hover:bg-amber-700 shadow">
+                    ⚙️ Convert Product &amp; Update Warehouse Stock
+                </button>
+            </div>
+
+            <div class="bg-white border rounded-lg p-4 shadow-sm">
+                <h4 class="font-semibold text-slate-700 mb-2">Product Conversion / Repacking Register</h4>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-100 text-xs text-slate-600 border-b">
+                                <th class="p-2">Date</th>
+                                <th class="p-2">From Bin</th>
+                                <th class="p-2">Consumed Material</th>
+                                <th class="p-2">Consumed Qty</th>
+                                <th class="p-2">To Bin / Floor</th>
+                                <th class="p-2">Created Material</th>
+                                <th class="p-2">Created Qty</th>
+                            </tr>
+                        </thead>
+                        <tbody id="conversion-history-list" class="text-sm">
+                            <tr><td colspan="7" class="p-4 text-center text-slate-400">अभी तक कोई प्रोडक्ट कन्वर्ज़न रिकॉर्ड नहीं है।</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 8: Multi-Bin Out & Bin-to-Bin Transfer -->
+        <div id="tab-transfer" class="space-y-6 hidden">
+            <div class="bg-sky-50 border border-sky-200 p-5 rounded-lg space-y-4">
+                <div>
+                    <h3 class="font-bold text-sky-950 text-lg">🔀 Multi-Bin Out &amp; Bin-to-Bin Transfer (एक साथ कई बिन से ज़रूरत अनुसार माल निकालें)</h3>
+                    <p class="text-xs text-sky-800">Material Code सर्च करके देखें कि स्टॉक किन-किन बिन या Line-1 में है। एक या अधिक बिन टिक करें, हर बिन में ज़रूरत के हिसाब से Out Qty डालें, और Destination Bin / Line-1 में ट्रांसफर करें।</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="md:col-span-2 bg-white p-4 border border-sky-200 rounded-lg space-y-3 shadow-sm">
+                        <div class="flex flex-wrap justify-between items-center gap-2 border-b pb-2">
+                            <h4 class="font-bold text-sky-900 text-sm">1. Search Material &amp; Select Multiple Bins with Custom Out Qty</h4>
+                            <span id="trf-total-selected-qty" class="text-xs font-mono font-bold bg-sky-100 text-sky-900 px-2.5 py-1 rounded">Total Out Qty: 0</span>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">🔍 Search Material Code / Description:</label>
+                            <input type="text" id="trf-source-search" placeholder="Material Code या Description टाइप करें..." class="p-2 border rounded text-xs w-full bg-white" oninput="renderMultiBinOutList()">
+                        </div>
+                        <div id="trf-multi-bin-list" class="max-h-72 overflow-y-auto border rounded divide-y bg-slate-50">
+                            <p class="p-3 text-xs text-slate-400">स्टॉक लोड हो रहा है...</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-4 border border-blue-200 rounded-lg space-y-3 shadow-sm flex flex-col justify-between">
+                        <div class="space-y-3">
+                            <h4 class="font-bold text-blue-900 text-sm border-b pb-1">2. Destination Bin / Line-1</h4>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Destination Storage Bin / Line-1:</label>
+                                <input type="text" id="trf-target-bin" placeholder="e.g. BA05 या Line-1" class="p-2 border rounded text-sm w-full">
+                            </div>
+                            <div class="text-xs text-slate-600 bg-slate-50 p-2.5 rounded border space-y-1">
+                                <div><b>Selected Bins Count:</b> <span id="trf-selected-bin-count" class="font-bold text-blue-800">0</span></div>
+                                <div><b>Total Out Qty:</b> <span id="trf-summary-out-qty" class="font-bold text-green-700">0</span></div>
+                            </div>
+                        </div>
+                        <div class="pt-3">
+                            <button onclick="executeMultiBinTransfer()" class="w-full py-2.5 bg-sky-600 text-white rounded-lg font-bold hover:bg-sky-700 shadow">
+                                🔀 Transfer Selected Bins Now
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white border rounded-lg p-4 shadow-sm">
+                <h4 class="font-semibold text-slate-700 mb-2">Bin-to-Bin Transfer Register</h4>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-100 text-xs text-slate-600 border-b">
+                                <th class="p-2">Date</th>
+                                <th class="p-2">From Bin</th>
+                                <th class="p-2">To Bin / Floor</th>
+                                <th class="p-2">Material Code</th>
+                                <th class="p-2">Description</th>
+                                <th class="p-2">Unit</th>
+                                <th class="p-2">Transfer Qty</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transfer-history-list" class="text-sm">
+                            <tr><td colspan="7" class="p-4 text-center text-slate-400">अभी तक कोई Bin-to-Bin Transfer रिकॉर्ड नहीं है।</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin User & Permissions Modal -->
+    <div id="user-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex justify-center items-center p-4 z-50">
+        <div class="bg-white p-6 rounded-xl max-w-5xl w-full space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center border-b pb-3">
+                <div>
+                    <h3 class="font-bold text-lg text-slate-800">👥 Admin User &amp; Permissions Manager</h3>
+                    <p class="text-xs text-slate-500">अधिकृत Email ID बनाएं, पासवर्ड बदलें, और प्रत्येक ईमेल यूज़र की अनुमति (Permissions) तय करें।</p>
+                </div>
+                <button onclick="closeUserModal()" class="text-slate-500 font-bold hover:text-red-600">✕</button>
+            </div>
+
+            <form onsubmit="saveUserFromAdmin(event)" class="bg-slate-50 border p-4 rounded-lg space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Authorized Email ID</label>
+                        <input type="text" id="mgr-user-id" required placeholder="e.g. operator1@sanand.com" class="w-full p-2 border rounded text-sm bg-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Full Name</label>
+                        <input type="text" id="mgr-user-name" required placeholder="e.g. Warehouse Operator" class="w-full p-2 border rounded text-sm bg-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Password</label>
+                        <input type="text" id="mgr-user-pass" required placeholder="Password (min 6 chars for Auth)" class="w-full p-2 border rounded text-sm bg-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Role</label>
+                        <select id="mgr-user-role" onchange="applyRolePermissionPreset(this.value)" class="w-full p-2 border rounded text-sm bg-white font-semibold">
+                            <option value="user">User (Custom Permissions)</option>
+                            <option value="admin">Admin (Full Access)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="text-xs font-bold text-slate-700 mb-2">Permissions (अनुमतियाँ):</div>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs bg-white p-3 border rounded">
+                        <label class="flex items-center gap-2"><input type="checkbox" id="perm-canMaster" class="mgr-perm"> Master Data</label>
+                        <label class="flex items-center gap-2"><input type="checkbox" id="perm-canInward" class="mgr-perm"> Inward &amp; Bulk Stock</label>
+                        <label class="flex items-center gap-2"><input type="checkbox" id="perm-canDispatch" class="mgr-perm"> SAP &amp; Pick Slip</label>
+                        <label class="flex items-center gap-2"><input type="checkbox" id="perm-canStock" class="mgr-perm"> Stock Report &amp; Excel</label>
+                        <label class="flex items-center gap-2"><input type="checkbox" id="perm-canSummary" class="mgr-perm"> Summary &amp; Reprint</label>
+                        <label class="flex items-center gap-2"><input type="checkbox" id="perm-canRacks" class="mgr-perm"> Bin &amp; Floor Viewer</label>
+                        <label class="flex items-center gap-2"><input type="checkbox" id="perm-canConvert" class="mgr-perm"> Repack / Convert</label>
+                        <label class="flex items-center gap-2"><input type="checkbox" id="perm-canTransfer" class="mgr-perm"> Bin-to-Bin Transfer</label>
+                        <label class="flex items-center gap-2"><input type="checkbox" id="perm-canReverse" class="mgr-perm"> Admin Pick Slip Reversal</label>
+                        <label class="flex items-center gap-2"><input type="checkbox" id="perm-canBackup" class="mgr-perm"> Backup / Restore</label>
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-2">
+                    <button type="button" onclick="resetUserForm()" class="px-3 py-1.5 bg-slate-200 text-slate-700 rounded text-xs font-bold">Clear</button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded text-xs font-bold hover:bg-indigo-700">
+                        💾 Save User &amp; Permissions
+                    </button>
+                </div>
+            </form>
+
+            <div class="overflow-x-auto border rounded-lg">
+                <table class="w-full text-left border-collapse text-xs">
+                    <thead>
+                        <tr class="bg-slate-100 text-slate-700 border-b">
+                            <th class="p-2">Email / Login ID</th>
+                            <th class="p-2">Name</th>
+                            <th class="p-2">Role</th>
+                            <th class="p-2">Allowed Permissions</th>
+                            <th class="p-2">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="user-list-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pick Slip Print Modal -->
+    <div id="print-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex justify-center items-center p-4 z-50">
+        <div class="bg-white p-6 rounded-xl max-w-6xl w-full space-y-4 shadow-2xl">
+            <div class="flex justify-between items-center border-b pb-3 no-print">
+                <h3 class="font-bold text-lg text-slate-800">🖨️ Official Pick Slip &amp; Dispatch Note</h3>
+                <button onclick="document.getElementById('print-modal').classList.add('hidden')" class="text-slate-500 font-bold hover:text-red-600">✕</button>
+            </div>
+            <div id="print-content" class="text-xs bg-white p-3 border rounded max-h-[70vh] overflow-auto"></div>
+            <div class="flex justify-end gap-2 no-print">
+                <button onclick="exportPickSlipExcel()" class="px-4 py-2 bg-emerald-600 text-white rounded text-sm font-semibold">📊 Export Excel (MatCode &gt; UNIT)</button>
+                <button onclick="window.print()" class="px-4 py-2 bg-slate-800 text-white rounded text-sm font-semibold">Print Slip</button>
+                <button onclick="document.getElementById('print-modal').classList.add('hidden')" class="px-4 py-2 bg-blue-600 text-white rounded text-sm font-semibold">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const FIREBASE_CONFIG = {
+            apiKey: "AIzaSyC78zdpUdiIUXcoZ9SqpxdkHu52s9mRxBw",
+            authDomain: "smartwms-sanand.firebaseapp.com",
+            databaseURL: "https://smartwms-sanand-default-rtdb.firebaseio.com",
+            projectId: "smartwms-sanand",
+            storageBucket: "smartwms-sanand.firebasestorage.app",
+            messagingSenderId: "488720758372",
+            appId: "1:488720758372:web:efa1d62b9cfe924f0a9171",
+            measurementId: "G-SV3LQJP85X"
+        };
+        const CLOUD_DB_ROOT = "smartwms_sanand_prod_v1";
+
+        const FLOOR_BIN_NAME = "Line-1";
+        const PERMISSION_KEYS = [
+            "canMaster", "canInward", "canDispatch", "canStock",
+            "canSummary", "canRacks", "canConvert", "canTransfer",
+            "canReverse", "canBackup"
+        ];
+        const PERMISSION_LABELS = {
+            canMaster: "Master",
+            canInward: "Inward",
+            canDispatch: "Dispatch",
+            canStock: "Stock",
+            canSummary: "Summary",
+            canRacks: "Bins/Line-1",
+            canConvert: "Convert",
+            canTransfer: "Transfer",
+            canReverse: "Reversal",
+            canBackup: "Backup/Restore"
+        };
+
+        let inwardRecords = JSON.parse(localStorage.getItem("wms_inwards_v34") || "[]");
+        let sapSalesData = JSON.parse(localStorage.getItem("wms_sap_sales_v34") || "[]");
+        let dispatchRecords = JSON.parse(localStorage.getItem("wms_dispatches_v34") || "[]");
+        let materialMasterData = JSON.parse(localStorage.getItem("wms_material_master_v34") || "[]");
+        let conversionRecords = JSON.parse(localStorage.getItem("wms_conversions_v34") || "[]");
+        let transferRecords = JSON.parse(localStorage.getItem("wms_transfers_v34") || "[]");
+        let slipCounter = Number(localStorage.getItem("wms_slip_counter_v34") || "1");
+        let adminPin = localStorage.getItem("wms_admin_pin_v34") || "1234";
+
+        function createDefaultUsers() {
+            const fullPerms = {};
+            PERMISSION_KEYS.forEach(k => { fullPerms[k] = true; });
+            return [
+                {
+                    id: "admin",
+                    name: "System Admin",
+                    password: String(adminPin),
+                    role: "admin",
+                    permissions: fullPerms
+                }
+            ];
+        }
+
+        let usersData = JSON.parse(localStorage.getItem("wms_users_v34") || "null");
+        if (!Array.isArray(usersData) || usersData.length === 0) {
+            usersData = createDefaultUsers();
+            localStorage.setItem("wms_users_v34", JSON.stringify(usersData));
+        }
+
+        let currentSessionUserId = sessionStorage.getItem("wms_active_user_v34") || "";
+        let firebaseAuth = null;
+        let firebaseDb = null;
+        let isCloudEnabled = false;
+        let dbListenerAttached = false;
+        let isApplyingRemoteUpdate = false;
+        let activeTabName = "master";
+
+        function updateSyncStatusUI(statusText, isOnline) {
+            const appBadge = document.getElementById("cloud-sync-badge");
+            const loginBadge = document.getElementById("login-sync-status");
+            if (appBadge) {
+                appBadge.textContent = statusText;
+                appBadge.className = isOnline
+                    ? "px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300"
+                    : "px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300";
+            }
+            if (loginBadge) {
+                loginBadge.textContent = statusText;
+                loginBadge.className = isOnline
+                    ? "mt-2 inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800"
+                    : "mt-2 inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-800";
+            }
+        }
+
+        function saveAllStateToLocal() {
+            localStorage.setItem("wms_inwards_v34", JSON.stringify(inwardRecords));
+            localStorage.setItem("wms_sap_sales_v34", JSON.stringify(sapSalesData));
+            localStorage.setItem("wms_dispatches_v34", JSON.stringify(dispatchRecords));
+            localStorage.setItem("wms_material_master_v34", JSON.stringify(materialMasterData));
+            localStorage.setItem("wms_conversions_v34", JSON.stringify(conversionRecords));
+            localStorage.setItem("wms_transfers_v34", JSON.stringify(transferRecords));
+            localStorage.setItem("wms_slip_counter_v34", String(slipCounter));
+            localStorage.setItem("wms_admin_pin_v34", String(adminPin));
+            localStorage.setItem("wms_users_v34", JSON.stringify(usersData));
+        }
+
+        function syncStateToCloud() {
+            saveAllStateToLocal();
+            if (!isCloudEnabled || !firebaseDb || isApplyingRemoteUpdate) return;
+            const payload = {
+                inwardRecords,
+                sapSalesData,
+                dispatchRecords,
+                materialMasterData,
+                conversionRecords,
+                transferRecords,
+                slipCounter,
+                adminPin,
+                usersData,
+                updatedAt: Date.now()
+            };
+            firebaseDb.ref(CLOUD_DB_ROOT).set(payload).catch(err => {
+                console.error("Firebase sync write error:", err);
+                updateSyncStatusUI("⚠️ Cloud Sync Retry Pending", false);
+            });
+        }
+
+        function refreshActiveView() {
+            if (!getCurrentUser()) return;
+            renderInwardTable();
+            if (activeTabName === "dispatch") {
+                const prevCust = document.getElementById("select-customer").value;
+                populateCustomerDropdown();
+                if (prevCust) {
+                    document.getElementById("select-customer").value = prevCust;
+                    loadCustomerInvoices();
+                }
+            }
+            if (activeTabName === "stock") renderStockReport();
+            if (activeTabName === "summary") renderDispatchSummary();
+            if (activeTabName === "racks") renderBins();
+            if (activeTabName === "convert") initConversionTab();
+            if (activeTabName === "transfer") initTransferTab();
+        }
+
+        function attachRealtimeDatabaseListener() {
+            if (!isCloudEnabled || !firebaseDb || dbListenerAttached) return;
+            dbListenerAttached = true;
+            updateSyncStatusUI("🔄 Connecting to Firebase Cloud...", true);
+
+            firebaseDb.ref(CLOUD_DB_ROOT).on("value", (snapshot) => {
+                const cloudData = snapshot.val();
+                if (!cloudData) {
+                    syncStateToCloud();
+                    updateSyncStatusUI("☁️ Firebase Live Cloud Synced", true);
+                    return;
+                }
+
+                isApplyingRemoteUpdate = true;
+                inwardRecords = Array.isArray(cloudData.inwardRecords) ? cloudData.inwardRecords : [];
+                sapSalesData = Array.isArray(cloudData.sapSalesData) ? cloudData.sapSalesData : [];
+                dispatchRecords = Array.isArray(cloudData.dispatchRecords) ? cloudData.dispatchRecords : [];
+                materialMasterData = Array.isArray(cloudData.materialMasterData) ? cloudData.materialMasterData : [];
+                conversionRecords = Array.isArray(cloudData.conversionRecords) ? cloudData.conversionRecords : [];
+                transferRecords = Array.isArray(cloudData.transferRecords) ? cloudData.transferRecords : [];
+                slipCounter = Number(cloudData.slipCounter) || 1;
+                if (cloudData.adminPin) adminPin = String(cloudData.adminPin);
+                if (Array.isArray(cloudData.usersData) && cloudData.usersData.length > 0) {
+                    usersData = cloudData.usersData;
+                }
+                saveAllStateToLocal();
+                isApplyingRemoteUpdate = false;
+
+                updateSyncStatusUI("☁️ Firebase Live Cloud Synced", true);
+                refreshActiveView();
+            }, (error) => {
+                console.error("Firebase listener error:", error);
+                updateSyncStatusUI("⚠️ Firebase Permission / Auth Required", false);
+            });
+        }
+
+        function initFirebaseCloudSync() {
+            const hasValidConfig = FIREBASE_CONFIG &&
+                FIREBASE_CONFIG.apiKey &&
+                !FIREBASE_CONFIG.apiKey.includes("PASTE_YOUR") &&
+                FIREBASE_CONFIG.databaseURL &&
+                !FIREBASE_CONFIG.databaseURL.includes("PASTE_YOUR");
+
+            if (!hasValidConfig || typeof firebase === "undefined") {
+                updateSyncStatusUI("💾 Local Browser Mode (Add Firebase Config for Multi-Device Sync)", false);
+                return;
+            }
+
+            try {
+                if (!firebase.apps.length) {
+                    firebase.initializeApp(FIREBASE_CONFIG);
+                }
+                firebaseAuth = typeof firebase.auth === "function" ? firebase.auth() : null;
+                firebaseDb = firebase.database();
+                isCloudEnabled = true;
+
+                if (firebaseAuth) {
+                    firebaseAuth.onAuthStateChanged((authUser) => {
+                        if (authUser) {
+                            attachRealtimeDatabaseListener();
+                        } else {
+                            // If rules are public or not yet using Auth, try attaching; if denied, UI reflects status
+                            attachRealtimeDatabaseListener();
+                        }
+                    });
+                } else {
+                    attachRealtimeDatabaseListener();
+                }
+            } catch (err) {
+                console.error("Firebase init failed:", err);
+                updateSyncStatusUI("💾 Local Mode (Firebase Config Error)", false);
+            }
+        }
+
+        function getCurrentUser() {
+            if (!currentSessionUserId) return null;
+            return usersData.find(u => String(u.id).toLowerCase() === String(currentSessionUserId).toLowerCase()) || null;
+        }
+
+        function hasPermission(permKey) {
+            const user = getCurrentUser();
+            if (!user) return false;
+            if (user.role === "admin") return true;
+            return Boolean(user.permissions && user.permissions[permKey]);
+        }
+
+        function getFirstAllowedTab() {
+            const tabMap = [
+                { tab: "master", perm: "canMaster" },
+                { tab: "inward", perm: "canInward" },
+                { tab: "dispatch", perm: "canDispatch" },
+                { tab: "stock", perm: "canStock" },
+                { tab: "summary", perm: "canSummary" },
+                { tab: "racks", perm: "canRacks" },
+                { tab: "convert", perm: "canConvert" },
+                { tab: "transfer", perm: "canTransfer" }
+            ];
+            const found = tabMap.find(t => hasPermission(t.perm));
+            return found ? found.tab : null;
+        }
+
+        function applyAccessUI() {
+            const user = getCurrentUser();
+            const loginScreen = document.getElementById("login-screen");
+            const appShell = document.getElementById("app-shell");
+
+            if (!user) {
+                loginScreen.classList.remove("hidden");
+                appShell.classList.add("hidden");
+                return;
+            }
+
+            loginScreen.classList.add("hidden");
+            appShell.classList.remove("hidden");
+
+            const badge = document.getElementById("session-user-badge");
+            badge.textContent = `👤 ${user.name} (${user.id}) • Role: ${user.role.toUpperCase()}`;
+
+            const manageUsersBtn = document.getElementById("btn-manage-users");
+            manageUsersBtn.classList.toggle("hidden", user.role !== "admin");
+
+            const backupBtn = document.getElementById("btn-backup");
+            const restoreLbl = document.getElementById("lbl-restore");
+            const canBackup = hasPermission("canBackup");
+            backupBtn.classList.toggle("hidden", !canBackup);
+            restoreLbl.classList.toggle("hidden", !canBackup);
+
+            document.querySelectorAll("[data-perm]").forEach(btn => {
+                const pKey = btn.getAttribute("data-perm");
+                btn.classList.toggle("hidden", !hasPermission(pKey));
+            });
+
+            const firstTab = getFirstAllowedTab();
+            if (firstTab) {
+                switchTab(firstTab);
+            }
+        }
+
+        async function handleLoginSubmit(e) {
+            e.preventDefault();
+            const enteredId = String(document.getElementById("login-id").value || "").trim().toLowerCase();
+            const enteredPass = String(document.getElementById("login-password").value || "");
+            const errElem = document.getElementById("login-error");
+            const submitBtn = document.getElementById("login-submit-btn");
+
+            const matchedUser = usersData.find(u =>
+                String(u.id).trim().toLowerCase() === enteredId &&
+                String(u.password) === enteredPass
+            );
+
+            if (!matchedUser) {
+                errElem.textContent = "❌ यह Email / Login ID अधिकृत नहीं है या Password गलत है!";
+                errElem.classList.remove("hidden");
+                return;
+            }
+
+            const hasAnyPerm = matchedUser.role === "admin" ||
+                PERMISSION_KEYS.some(k => matchedUser.permissions && matchedUser.permissions[k]);
+            if (!hasAnyPerm) {
+                errElem.textContent = "❌ इस अकाउंट को कोई मॉड्यूल परमिशन नहीं दी गई है। Admin से संपर्क करें।";
+                errElem.classList.remove("hidden");
+                return;
+            }
+
+            // If an email address is entered and Firebase Auth is configured, sign in with Firebase Auth too
+            if (firebaseAuth && enteredId.includes("@")) {
+                try {
+                    if (submitBtn) submitBtn.disabled = true;
+                    await firebaseAuth.signInWithEmailAndPassword(enteredId, enteredPass);
+                } catch (authErr) {
+                    console.warn("Firebase Auth email sign-in note:", authErr.code || authErr.message);
+                } finally {
+                    if (submitBtn) submitBtn.disabled = false;
+                }
+            }
+
+            errElem.classList.add("hidden");
+            currentSessionUserId = matchedUser.id;
+            sessionStorage.setItem("wms_active_user_v34", matchedUser.id);
+            document.getElementById("login-password").value = "";
+            applyAccessUI();
+        }
+
+        function logoutUser() {
+            currentSessionUserId = "";
+            sessionStorage.removeItem("wms_active_user_v34");
+            document.getElementById("user-modal").classList.add("hidden");
+            if (firebaseAuth && firebaseAuth.currentUser) {
+                firebaseAuth.signOut().catch(() => {});
+            }
+            applyAccessUI();
+        }
+
+        function openUserModal() {
+            const user = getCurrentUser();
+            if (!user || user.role !== "admin") {
+                alert("❌ केवल Admin ही Users & Permissions मैनेज कर सकता है।");
+                return;
+            }
+            resetUserForm();
+            renderUsersList();
+            document.getElementById("user-modal").classList.remove("hidden");
+        }
+
+        function closeUserModal() {
+            document.getElementById("user-modal").classList.add("hidden");
+        }
+
+        function applyRolePermissionPreset(role) {
+            const isAdmin = role === "admin";
+            PERMISSION_KEYS.forEach(k => {
+                const cb = document.getElementById("perm-" + k);
+                if (cb) cb.checked = isAdmin;
+            });
+        }
+
+        function resetUserForm() {
+            document.getElementById("mgr-user-id").value = "";
+            document.getElementById("mgr-user-id").readOnly = false;
+            document.getElementById("mgr-user-name").value = "";
+            document.getElementById("mgr-user-pass").value = "";
+            document.getElementById("mgr-user-role").value = "user";
+            applyRolePermissionPreset("user");
+        }
+
+        function saveUserFromAdmin(e) {
+            e.preventDefault();
+            const currentUser = getCurrentUser();
+            if (!currentUser || currentUser.role !== "admin") return;
+
+            const uid = String(document.getElementById("mgr-user-id").value || "").trim().toLowerCase();
+            const uname = String(document.getElementById("mgr-user-name").value || "").trim();
+            const upass = String(document.getElementById("mgr-user-pass").value || "");
+            const urole = document.getElementById("mgr-user-role").value;
+
+            if (!uid || !uname || !upass) {
+                alert("कृपया Email / Login ID, Name और Password भरें।");
+                return;
+            }
+
+            const perms = {};
+            PERMISSION_KEYS.forEach(k => {
+                const cb = document.getElementById("perm-" + k);
+                perms[k] = urole === "admin" ? true : Boolean(cb && cb.checked);
+            });
+
+            const existingIdx = usersData.findIndex(u => String(u.id).toLowerCase() === uid);
+            const recordObj = { id: uid, name: uname, password: upass, role: urole, permissions: perms };
+
+            if (existingIdx >= 0) {
+                usersData[existingIdx] = recordObj;
+            } else {
+                usersData.push(recordObj);
+            }
+
+            if (uid === "admin") {
+                adminPin = upass;
+            }
+
+            syncStateToCloud();
+            renderUsersList();
+            applyAccessUI();
+            alert(`✅ अधिकृत यूज़र "${uid}" और उसकी Permissions सेव व क्लाउड सिंक हो गई हैं!`);
+        }
+
+        function editUserRow(uid) {
+            const target = usersData.find(u => String(u.id).toLowerCase() === String(uid).toLowerCase());
+            if (!target) return;
+            document.getElementById("mgr-user-id").value = target.id;
+            document.getElementById("mgr-user-id").readOnly = true;
+            document.getElementById("mgr-user-name").value = target.name;
+            document.getElementById("mgr-user-pass").value = target.password;
+            document.getElementById("mgr-user-role").value = target.role;
+            PERMISSION_KEYS.forEach(k => {
+                const cb = document.getElementById("perm-" + k);
+                if (cb) {
+                    cb.checked = target.role === "admin" ? true : Boolean(target.permissions && target.permissions[k]);
+                }
+            });
+        }
+
+        function deleteUserRow(uid) {
+            if (String(uid).toLowerCase() === "admin") {
+                alert("Default Admin अकाउंट डिलीट नहीं किया जा सकता।");
+                return;
+            }
+            if (!confirm(`क्या आप यूज़र "${uid}" का एक्सेस हटाना चाहते हैं?`)) return;
+            usersData = usersData.filter(u => String(u.id).toLowerCase() !== String(uid).toLowerCase());
+            syncStateToCloud();
+            renderUsersList();
+        }
+
+        function renderUsersList() {
+            const tbody = document.getElementById("user-list-tbody");
+            let html = "";
+            usersData.forEach(u => {
+                const allowedList = u.role === "admin"
+                    ? ["ALL ACCESS"]
+                    : PERMISSION_KEYS.filter(k => u.permissions && u.permissions[k]).map(k => PERMISSION_LABELS[k]);
+
+                const badges = allowedList.map(lbl =>
+                    `<span class="inline-block bg-indigo-50 text-indigo-800 border border-indigo-200 px-1.5 py-0.5 rounded mr-1 mb-1">${lbl}</span>`
+                ).join("");
+
+                const delBtn = u.id === "admin"
+                    ? ""
+                    : `<button onclick="deleteUserRow('${u.id}')" class="px-2 py-1 bg-red-100 text-red-700 rounded font-bold hover:bg-red-200">Delete</button>`;
+
+                html += `<tr class="border-b hover:bg-slate-50 align-top">
+                    <td class="p-2 font-mono font-bold text-slate-800">${u.id}</td>
+                    <td class="p-2 font-semibold">${u.name}</td>
+                    <td class="p-2 font-bold uppercase text-indigo-700">${u.role}</td>
+                    <td class="p-2">${badges || '<span class="text-slate-400">No Permissions</span>'}</td>
+                    <td class="p-2 space-x-1 whitespace-nowrap">
+                        <button onclick="editUserRow('${u.id}')" class="px-2 py-1 bg-blue-100 text-blue-700 rounded font-bold hover:bg-blue-200">Edit</button>
+                        ${delBtn}
+                    </td>
+                </tr>`;
+            });
+            tbody.innerHTML = html;
+        }
+
+        function formatDateOnly(dateInput) {
+            let d = dateInput ? new Date(dateInput) : new Date();
+            if (isNaN(d.getTime()) && typeof dateInput === "string") {
+                const datePart = dateInput.split(",")[0].trim();
+                const parts = datePart.split("/");
+                if (parts.length === 3) {
+                    const dd = String(parts[0]).padStart(2, "0");
+                    const mm = String(parts[1]).padStart(2, "0");
+                    const yyyy = String(parts[2]).slice(0, 4);
+                    return `${dd}/${mm}/${yyyy}`;
+                }
+                return datePart;
+            }
+            if (isNaN(d.getTime())) d = new Date();
+            const dd = String(d.getDate()).padStart(2, "0");
+            const mm = String(d.getMonth() + 1).padStart(2, "0");
+            const yyyy = d.getFullYear();
+            return `${dd}/${mm}/${yyyy}`;
+        }
+
+        function getUnitTotals(items) {
+            const totalsMap = new Map();
+            items.forEach(item => {
+                const unitKey = String(item.unit || item.UNIT || "-").trim() || "-";
+                const qtyVal = Number(item.qty ?? item.PickedQty ?? 0);
+                totalsMap.set(unitKey, (totalsMap.get(unitKey) || 0) + qtyVal);
+            });
+            return Array.from(totalsMap.entries()).map(([unit, totalQty]) => ({ unit, totalQty }));
+        }
+
+        // Calculates Total Units + Total Ltr / Kg from PackSize in Material Master or Description
+        function getPickSlipVolumeWeightTotals(items) {
+            let totalUnits = 0;
+            let totalLtr = 0;
+            let totalKg = 0;
+
+            items.forEach(item => {
+                const qty = Number(item.qty ?? item.PickedQty ?? 0);
+                totalUnits += qty;
+
+                const matCode = String(item.mat || item.MaterialCode || "").trim().toUpperCase();
+                const masterMatch = materialMasterData.find(m =>
+                    String(m.MaterialCode || m.Code || "").trim().toUpperCase() === matCode
+                ) || {};
+
+                const candidateTexts = [
+                    item.packSize,
+                    masterMatch.PackSize,
+                    masterMatch.Size,
+                    item.desc,
+                    item.MaterialDescription,
+                    masterMatch.MaterialDescription,
+                    masterMatch.Description,
+                    item.unit,
+                    item.UNIT
+                ]
+                    .filter(Boolean)
+                    .map(s => String(s));
+
+                let matchedVolOrWt = false;
+                for (const txt of candidateTexts) {
+                    // Match patterns like "20 Ltr", "7.5L", "210 LTR", "180 KG", "20KG", "(15 Ltr)"
+                    const m = txt.match(/(\d+(?:\.\d+)?)\s*(LTR|L|LITER|LITRE|KG|KGS)\b/i);
+                    if (m) {
+                        const packVal = parseFloat(m[1]);
+                        const uom = m[2].toUpperCase();
+                        if (uom.startsWith("K")) {
+                            totalKg += qty * packVal;
+                        } else {
+                            totalLtr += qty * packVal;
+                        }
+                        matchedVolOrWt = true;
+                        break;
+                    }
+                }
+
+                // Fallback if UNIT itself is KG or LTR
+                if (!matchedVolOrWt) {
+                    const u = String(item.unit || item.UNIT || "").trim().toUpperCase();
+                    if (u === "KG" || u === "KGS") totalKg += qty;
+                    if (u === "L" || u === "LTR" || u === "LITER" || u === "LITRE") totalLtr += qty;
+                }
+            });
+
+            return {
+                totalUnits,
+                totalLtr: Number(totalLtr.toFixed(2)),
+                totalKg: Number(totalKg.toFixed(2))
+            };
+        }
+
+        function buildPickSlipPrintTableHTML(items) {
+            const sorted = sortPickSlipItemsByMaterialAndUnit(items);
+            const unitTotals = getUnitTotals(sorted);
+            const volWtTotals = getPickSlipVolumeWeightTotals(sorted);
+
+            let rowsHTML = "";
+            sorted.forEach(item => {
+                const slipNo = item.batchId || item.invoice || "-";
+                const dtOnly = formatDateOnly(item.date);
+                const cust = item.customer || "-";
+                const bin = item.bin || "-";
+                const matCode = item.mat || "-";
+                const matDesc = item.desc || "-";
+                const pickedQty = item.qty ?? 0;
+                const mrp = item.mrp ?? 0;
+                const unit = item.unit || "-";
+                const invNo = item.invoice || "-";
+
+                rowsHTML += `<tr>
+                    <td class="px-2 py-1 border border-slate-500 font-semibold">${slipNo}</td>
+                    <td class="px-2 py-1 border border-slate-500 whitespace-nowrap">${dtOnly}</td>
+                    <td class="px-2 py-1 border border-slate-500">${cust}</td>
+                    <td class="px-2 py-1 border border-slate-500 font-mono">${bin}</td>
+                    <td class="px-2 py-1 border border-slate-500 text-right">${matCode}</td>
+                    <td class="px-2 py-1 border border-slate-500">${matDesc}</td>
+                    <td class="px-2 py-1 border border-slate-500 text-right">${pickedQty}</td>
+                    <td class="px-2 py-1 border border-slate-500 text-right">${mrp}</td>
+                    <td class="px-2 py-1 border border-slate-500">${unit}</td>
+                    <td class="px-2 py-1 border border-slate-500 text-right">${invNo}</td>
+                </tr>`;
+            });
+
+            let footerRowsHTML = "";
+            unitTotals.forEach(({ unit, totalQty }, idx) => {
+                const label = idx === 0 ? "Total PickedQty (By Unit)" : "";
+                footerRowsHTML += `<tr class="bg-slate-100 font-bold text-slate-900">
+                    <td colspan="6" class="px-2 py-1 border border-slate-500 text-right">${label}</td>
+                    <td class="px-2 py-1 border border-slate-500 text-right">${totalQty}</td>
+                    <td class="px-2 py-1 border border-slate-500"></td>
+                    <td class="px-2 py-1 border border-slate-500">${unit}</td>
+                    <td class="px-2 py-1 border border-slate-500"></td>
+                </tr>`;
+            });
+
+            footerRowsHTML += `<tr class="bg-blue-50 font-extrabold text-slate-950">
+                <td colspan="6" class="px-2 py-1.5 border border-slate-500 text-right">
+                    Grand Total Units: ${volWtTotals.totalUnits} | Total Ltr: ${volWtTotals.totalLtr} Ltr | Total Kg: ${volWtTotals.totalKg} Kg
+                </td>
+                <td class="px-2 py-1.5 border border-slate-500 text-right">${volWtTotals.totalUnits}</td>
+                <td colspan="3" class="px-2 py-1.5 border border-slate-500 text-left font-mono">
+                    ${volWtTotals.totalLtr} Ltr / ${volWtTotals.totalKg} Kg
+                </td>
+            </tr>`;
+
+            return `<table class="w-full text-left border-collapse border border-slate-500 text-xs text-slate-900 bg-white">
+                <thead>
+                    <tr class="bg-slate-100 font-semibold">
+                        <th class="px-2 py-1 border border-slate-500">PickSlipNo</th>
+                        <th class="px-2 py-1 border border-slate-500">Date</th>
+                        <th class="px-2 py-1 border border-slate-500">CustomerName</th>
+                        <th class="px-2 py-1 border border-slate-500">StorageBin</th>
+                        <th class="px-2 py-1 border border-slate-500">MaterialCode</th>
+                        <th class="px-2 py-1 border border-slate-500">MaterialDescription</th>
+                        <th class="px-2 py-1 border border-slate-500">PickedQty</th>
+                        <th class="px-2 py-1 border border-slate-500">MRP</th>
+                        <th class="px-2 py-1 border border-slate-500">UNIT</th>
+                        <th class="px-2 py-1 border border-slate-500">InvoiceNo</th>
+                    </tr>
+                </thead>
+                <tbody>${rowsHTML}</tbody>
+                <tfoot>${footerRowsHTML}</tfoot>
+            </table>`;
+        }
+
+        function changeAdminPin() {
+            const currentUser = getCurrentUser();
+            if (!currentUser || currentUser.role !== "admin") {
+                alert("❌ केवल Admin ही Admin PIN बदल सकता है।");
+                return;
+            }
+            const currentEntered = prompt("वर्तमान Admin PIN डालें (Default: 1234):");
+            if (currentEntered === null) return;
+            if (String(currentEntered).trim() !== String(adminPin)) {
+                alert("❌ गलत Admin PIN! PIN नहीं बदला जा सका।");
+                return;
+            }
+            const nextPin = prompt("नया Admin PIN सेट करें (कम से कम 4 अंक):");
+            if (nextPin === null) return;
+            const cleaned = String(nextPin).trim();
+            if (cleaned.length < 4) {
+                alert("कृपया कम से कम 4 अंकों का नया PIN डालें।");
+                return;
+            }
+            adminPin = cleaned;
+            const adminObj = usersData.find(u => u.id === "admin");
+            if (adminObj) adminObj.password = adminPin;
+            syncStateToCloud();
+            alert("✅ Admin PIN सफलतापूर्वक अपडेट और क्लाउड सिंक हो गया है!");
+        }
+
+        function verifyAdminAccess(actionLabel) {
+            const currentUser = getCurrentUser();
+            if (currentUser && currentUser.role === "admin" && hasPermission("canReverse")) {
+                return true;
+            }
+            if (!hasPermission("canReverse")) {
+                alert("❌ आपके अकाउंट को Pick Slip / Dispatch Reversal की अनुमति नहीं है।");
+                return false;
+            }
+            const entered = prompt(`🔒 Admin Access Required (${actionLabel}):\nकृपया Admin PIN डालें:`);
+            if (entered === null) return false;
+            if (String(entered).trim() !== String(adminPin)) {
+                alert("❌ अमान्य Admin PIN! केवल Admin ही Pick Slip / Dispatch रिवर्स कर सकता है।");
+                return false;
+            }
+            return true;
+        }
+
+        function sortPickSlipItemsByMaterialAndUnit(items) {
+            return [...items].sort((a, b) => {
+                const matA = String(a.mat || a.MaterialCode || "").trim().toUpperCase();
+                const matB = String(b.mat || b.MaterialCode || "").trim().toUpperCase();
+                const matCmp = matA.localeCompare(matB, undefined, { numeric: true, sensitivity: "base" });
+                if (matCmp !== 0) return matCmp;
+
+                const unitA = String(a.unit || a.UNIT || "").trim().toUpperCase();
+                const unitB = String(b.unit || b.UNIT || "").trim().toUpperCase();
+                return unitA.localeCompare(unitB, undefined, { numeric: true, sensitivity: "base" });
+            });
+        }
+
+        function exportPickSlipExcel(customItems = null, filePrefix = "Pick_Slip_Report") {
+            const sourceItems = Array.isArray(customItems) && customItems.length > 0 ? customItems : dispatchRecords;
+            if (!sourceItems || sourceItems.length === 0) {
+                alert("Pick Slip Excel निर्यात करने के लिए कोई डिस्पच / पिक स्लिप रिकॉर्ड उपलब्ध नहीं है!");
+                return;
+            }
+
+            const sortedItems = sortPickSlipItemsByMaterialAndUnit(sourceItems);
+            const volWtTotals = getPickSlipVolumeWeightTotals(sortedItems);
+            const excelRows = sortedItems.map(item => ({
+                "PickSlipNo": item.batchId || item.invoice || "-",
+                "Date": formatDateOnly(item.date),
+                "CustomerName": item.customer || "-",
+                "StorageBin": item.bin || "-",
+                "MaterialCode": String(item.mat || "").trim(),
+                "MaterialDescription": item.desc || "-",
+                "PickedQty": Number(item.qty || 0),
+                "MRP": item.mrp ?? 0,
+                "UNIT": String(item.unit || "-").trim(),
+                "InvoiceNo": item.invoice || "-"
+            }));
+
+            const unitTotals = getUnitTotals(sortedItems);
+            unitTotals.forEach(({ unit, totalQty }, idx) => {
+                excelRows.push({
+                    "PickSlipNo": "",
+                    "Date": "",
+                    "CustomerName": "",
+                    "StorageBin": "",
+                    "MaterialCode": "",
+                    "MaterialDescription": idx === 0 ? "Total PickedQty" : "",
+                    "PickedQty": totalQty,
+                    "MRP": "",
+                    "UNIT": unit,
+                    "InvoiceNo": ""
+                });
+            });
+
+            excelRows.push({
+                "PickSlipNo": "",
+                "Date": "",
+                "CustomerName": "",
+                "StorageBin": "",
+                "MaterialCode": "",
+                "MaterialDescription": `Grand Total Units: ${volWtTotals.totalUnits} | Total Ltr: ${volWtTotals.totalLtr} | Total Kg: ${volWtTotals.totalKg}`,
+                "PickedQty": volWtTotals.totalUnits,
+                "MRP": "",
+                "UNIT": `${volWtTotals.totalLtr} Ltr / ${volWtTotals.totalKg} Kg`,
+                "InvoiceNo": ""
+            });
+
+            const ws = XLSX.utils.json_to_sheet(excelRows);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Pick_Slip_Sorted");
+            XLSX.writeFile(wb, `${filePrefix}_Sorted_MatCode_UNIT_${new Date().toISOString().slice(0, 10)}.xlsx`);
+            alert("Pick Slip Excel रिपोर्ट डाउनलोड हो गई है!");
+        }
+
+        function getAll2400Bins() {
+            const racks = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T"];
+            const levels = ["A","B","C","D","E","F"];
+            const bins = [];
+            racks.forEach(rack => {
+                levels.forEach(lvl => {
+                    for (let i = 1; i <= 20; i++) {
+                        const col = i < 10 ? "0" + i : String(i);
+                        bins.push(rack + lvl + col);
+                    }
+                });
+            });
+            return bins;
+        }
+
+        function normalizeBinCode(rawBin) {
+            const cleaned = String(rawBin || "").trim();
+            if (!cleaned) return "";
+            if (cleaned.toLowerCase() === "line-1" || cleaned.toLowerCase() === "line1") {
+                return FLOOR_BIN_NAME;
+            }
+            return cleaned.toUpperCase();
+        }
+
+        function matchesLocationFilter(binCode, locationFilter) {
+            const normalized = normalizeBinCode(binCode);
+            if (!locationFilter || locationFilter === "ALL") return true;
+            if (locationFilter === "Line-1") return normalized === FLOOR_BIN_NAME;
+            if (locationFilter.startsWith("RACK_")) {
+                const rackLetter = locationFilter.replace("RACK_", "");
+                return normalized !== FLOOR_BIN_NAME && normalized.startsWith(rackLetter);
+            }
+            return true;
+        }
+
+        function switchTab(tab) {
+            const permByTab = {
+                master: "canMaster",
+                inward: "canInward",
+                dispatch: "canDispatch",
+                stock: "canStock",
+                summary: "canSummary",
+                racks: "canRacks",
+                convert: "canConvert",
+                transfer: "canTransfer"
+            };
+            if (!hasPermission(permByTab[tab])) {
+                alert("❌ आपको इस सेक्शन को एक्सेस करने की अनुमति नहीं है।");
+                return;
+            }
+
+            activeTabName = tab;
+            ["master", "inward", "dispatch", "stock", "summary", "racks", "convert", "transfer"].forEach(t => {
+                document.getElementById("tab-" + t).classList.add("hidden");
+                document.getElementById("btn-" + t).className = "px-4 py-2 bg-slate-200 text-slate-700 rounded-lg font-medium";
+            });
+            document.getElementById("tab-" + tab).classList.remove("hidden");
+            document.getElementById("btn-" + tab).className = "px-4 py-2 bg-blue-600 text-white rounded-lg font-medium shadow";
+
+            if (tab === "inward") {
+                const container = document.getElementById("inward-rows-container");
+                if (container.children.length === 0) addInwardRow();
+                renderInwardTable();
+            }
+            if (tab === "dispatch") populateCustomerDropdown();
+            if (tab === "stock") renderStockReport();
+            if (tab === "summary") renderDispatchSummary();
+            if (tab === "racks") renderBins();
+            if (tab === "convert") initConversionTab();
+            if (tab === "transfer") initTransferTab();
+        }
+
+        function downloadBackup() {
+            if (!hasPermission("canBackup")) {
+                alert("❌ आपको Backup लेने की अनुमति नहीं है।");
+                return;
+            }
+            const backupData = { inwardRecords, sapSalesData, dispatchRecords, materialMasterData, conversionRecords, transferRecords, slipCounter, adminPin, usersData };
+            const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `SmartWMS_Backup_${new Date().toISOString().slice(0, 10)}.json`;
+            a.click();
+            alert("डेटा बैकअप सफलतापूर्वक डाउनलोड हो गया है!");
+        }
+
+        function restoreBackup(event) {
+            if (!hasPermission("canBackup")) {
+                alert("❌ आपको Restore करने की अनुमति नहीं है।");
+                return;
+            }
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (data.inwardRecords && data.dispatchRecords) {
+                        inwardRecords = data.inwardRecords;
+                        sapSalesData = data.sapSalesData || [];
+                        dispatchRecords = data.dispatchRecords;
+                        materialMasterData = data.materialMasterData || [];
+                        conversionRecords = data.conversionRecords || [];
+                        transferRecords = data.transferRecords || [];
+                        slipCounter = data.slipCounter || 1;
+                        if (data.adminPin) adminPin = String(data.adminPin);
+                        if (Array.isArray(data.usersData) && data.usersData.length > 0) usersData = data.usersData;
+                        syncStateToCloud();
+                        alert("डेटा सफलतापूर्वक रीस्टोर (Restore) और क्लाउड सिंक हो गया है!");
+                        applyAccessUI();
+                    } else {
+                        alert("अमान्य बैकअप फाइल फॉर्मेट!");
+                    }
+                } catch (err) {
+                    alert("बैकअप फ़ाइल पढ़ने में त्रुटि हुई।");
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function downloadMasterTemplate(type) {
+            const wb = XLSX.utils.book_new();
+            let wsData = [];
+            let fileName = "";
+            if (type === "plant") {
+                wsData = [["PlantCode", "PlantName"], ["3240", "Taloja"], ["3136", "Silvassa"]];
+                fileName = "Plant_Master_Template.xlsx";
+            } else if (type === "material") {
+                wsData = [
+                    ["MaterialCode", "MaterialDescription", "Unit", "PackSize"],
+                    ["7688213", "Lubricant Oil", "BUCKET", "20 Ltr"],
+                    ["7436401", "Industrial Grease", "DRUM", "210 Ltr"]
+                ];
+                fileName = "Material_Master_Template.xlsx";
+            } else if (type === "customer") {
+                wsData = [["CustomerCode", "CustomerName", "CustomerLocation"], ["CUST501", "Reliance Retail", "Ahmedabad"], ["CUST502", "Tata Trent", "Mumbai"]];
+                fileName = "Customer_Master_Template.xlsx";
+            }
+            const ws = XLSX.utils.aoa_to_sheet(wsData);
+            XLSX.utils.book_append_sheet(wb, ws, "Template");
+            XLSX.writeFile(wb, fileName);
+            alert(`${type.toUpperCase()} सैंपल डाउनलोड हो गया है!`);
+        }
+
+        function downloadStockUploadTemplate() {
+            const wb = XLSX.utils.book_new();
+            const wsData = [
+                ["Storage Bin", "Material Code", "Description", "Unit", "MRP", "Qty."],
+                ["AA01", "7688213", "Lubricant Oil Bucket 20 Ltr", "BUCKET", "2500", "50"],
+                ["Line-1", "7436401", "Industrial Grease Drum 210 Ltr", "DRUM", "500", "120"]
+            ];
+            const ws = XLSX.utils.aoa_to_sheet(wsData);
+            XLSX.utils.book_append_sheet(wb, ws, "Stock_Upload");
+            XLSX.writeFile(wb, "Stock_Upload_Format.xlsx");
+            alert("स्टॉक अपलोड एक्सेल सैंपल डाउनलोड हो गया है!");
+        }
+
+        function downloadSAPTemplate() {
+            const wb = XLSX.utils.book_new();
+            const wsData = [
+                ["InvoiceNo", "CustomerName", "MaterialCode", "MaterialDescription", "OrderQty", "UNIT", "MRP"],
+                ["7011837489", "Shree Chandarana Distributors-SSA", "7688213", "Lubricant Oil", "20", "BUCKET", "2500"],
+                ["193870501", "COLD- AMNS India PVT LTD", "7436401", "Industrial Grease", "15", "DRUM", "500"]
+            ];
+            const ws = XLSX.utils.aoa_to_sheet(wsData);
+            XLSX.utils.book_append_sheet(wb, ws, "SAP_Sales");
+            XLSX.writeFile(wb, "SAP_Sales_Report_Template.xlsx");
+            alert("SAP सेल्स रिपोर्ट सैंपल डाउनलोड हो गया है!");
+        }
+
+        function handleMasterUpload(type) {
+            const fileInput = document.getElementById("upload-" + type);
+            if (fileInput.files.length === 0) {
+                alert("कृपया फ़ाइल चुनें!");
+                return;
+            }
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: "array" });
+                    const sheetData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+
+                    if (type === "material") {
+                        let addedCount = 0;
+                        sheetData.forEach(newItem => {
+                            const newCode = String(newItem.MaterialCode || newItem.Code || "").trim().toUpperCase();
+                            const exists = materialMasterData.some(m => String(m.MaterialCode || m.Code || "").trim().toUpperCase() === newCode);
+                            if (!exists && newCode) {
+                                materialMasterData.push({
+                                    MaterialCode: newCode,
+                                    MaterialDescription: String(newItem.MaterialDescription || newItem.Description || "-").trim(),
+                                    Unit: String(newItem.Unit || newItem.UNIT || newItem.PackingType || "-").trim(),
+                                    PackSize: String(newItem.PackSize || newItem.Size || "-").trim()
+                                });
+                                addedCount++;
+                            }
+                        });
+                        syncStateToCloud();
+                        alert(`MATERIAL मास्टर सफलतापूर्वक अपेंड और क्लाउड सिंक हो गया है! ${addedCount} नए रिकॉर्ड जोड़े गए।`);
+                    } else {
+                        alert(`${type.toUpperCase()} मास्टर फ़ाइल सफलतापूर्वक अपेंड (Append) हो गई है!`);
+                    }
+                } catch (err) {
+                    alert("फ़ाइल पढ़ने में त्रुटि। सही फॉर्मेट अपलोड करें।");
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function handleBulkStockExcelUpload() {
+            const fileInput = document.getElementById("upload-stock-excel");
+            if (fileInput.files.length === 0) {
+                alert("कृपया स्टॉक एक्सेल फ़ाइल चुनें!");
+                return;
+            }
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: "array" });
+                    const sheetData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+
+                    let count = 0;
+                    sheetData.forEach(row => {
+                        const bin = normalizeBinCode(row["Storage Bin"] || row.StorageBin || row.Bin || "");
+                        const mat = String(row["Material Code"] || row.MaterialCode || row.Mat || "").trim();
+                        const desc = String(row["Description"] || row.Desc || row.MaterialDescription || "-").trim();
+                        const unit = String(row["Unit"] || row.UNIT || row.SKU || "-").trim();
+                        const mrp = row["MRP"] !== undefined && row["MRP"] !== null && row["MRP"] !== ""
+                            ? String(row["MRP"]).trim()
+                            : (row.MRP !== undefined && row.MRP !== null && row.MRP !== "" ? String(row.MRP).trim() : "0");
+                        const qty = Number(row["Qty."] ?? row["Qty"] ?? row.Qty ?? row["Phy. Stock"] ?? row.PhyStock ?? row.Quantity ?? 0);
+
+                        if (mat && qty > 0 && bin) {
+                            inwardRecords.push({
+                                id: Date.now() + Math.random(),
+                                plant: "3240",
+                                vehicle: bin === FLOOR_BIN_NAME ? "FLOOR-LINE1" : "EXCEL-BULK",
+                                transporter: "Direct Upload",
+                                challan: "BULK",
+                                mat,
+                                desc,
+                                sku: unit,
+                                batch: "B1",
+                                mrp,
+                                qty,
+                                bin
+                            });
+                            count++;
+                        }
+                    });
+
+                    syncStateToCloud();
+                    renderInwardTable();
+                    alert(`सफलतापूर्वक ${count} स्टॉक रिकॉर्ड्स अपलोड और क्लाउड सिंक हो गए हैं!`);
+                } catch (err) {
+                    alert("फ़ाइल पढ़ने में त्रुटि। कृपया सही एक्सेल फॉर्मेट अपलोड करें।");
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function handleSAPUpload() {
+            const fileInput = document.getElementById("upload-sap");
+            if (fileInput.files.length === 0) {
+                alert("कृपया SAP सेल्स रिपोर्ट की फ़ाइल चुनें!");
+                return;
+            }
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: "array" });
+                    const rawSales = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+
+                    sapSalesData = rawSales.map((item, index) => {
+                        const invoiceNo = String(item.InvoiceNo || item.Invoice || "INV-" + index).trim();
+                        const customerName = String(item.CustomerName || item.Customer || "").trim();
+                        const materialCode = String(item.MaterialCode || item.Material || "").trim();
+                        const materialDescription = String(item.MaterialDescription || item.Description || "-").trim();
+                        const qty = Number(item.OrderQty || item.Qty || 0);
+                        const unit = String(item.UNIT || item.Unit || item.UOM || "-").trim();
+                        const mrp = item.MRP !== undefined && item.MRP !== null && item.MRP !== "" ? item.MRP : "0";
+
+                        return {
+                            ...item,
+                            InvoiceNo: invoiceNo,
+                            CustomerName: customerName,
+                            MaterialCode: materialCode,
+                            MaterialDescription: materialDescription,
+                            OrderQty: qty,
+                            UNIT: unit,
+                            MRP: mrp,
+                            uniqueId: `${invoiceNo}_${materialCode}_${index}`,
+                            originalQty: qty,
+                            remainingQty: qty
+                        };
+                    });
+
+                    syncStateToCloud();
+                    alert(`SAP रिपोर्ट अपलोड और क्लाउड सिंक सफल! ${sapSalesData.length} रिकॉर्ड मिले हैं।`);
+                    populateCustomerDropdown();
+                } catch (err) {
+                    alert("फ़ाइल पढ़ने में त्रुटि। सही एक्सेल फॉर्मेट अपलोड करें।");
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function populateCustomerDropdown() {
+            const select = document.getElementById("select-customer");
+            select.innerHTML = '<option value="">-- कस्टमर चुनें --</option>';
+            if (sapSalesData.length === 0) return;
+
+            const activeSales = sapSalesData.filter(item => Number(item.remainingQty) > 0);
+            const customers = [...new Set(activeSales.map(item => String(item.CustomerName || item.Customer || "").trim()))];
+            customers.forEach(cust => {
+                if (cust) {
+                    const opt = document.createElement("option");
+                    opt.value = cust;
+                    opt.textContent = cust;
+                    select.appendChild(opt);
+                }
+            });
+        }
+
+        function loadCustomerInvoices() {
+            const selectedCust = document.getElementById("select-customer").value;
+            const container = document.getElementById("invoice-container");
+            if (!selectedCust) {
+                container.innerHTML = '<p class="text-slate-400">कृपया कस्टमर चुनें।</p>';
+                return;
+            }
+
+            const filteredInvoices = sapSalesData.filter(item =>
+                String(item.CustomerName || item.Customer || "").trim() === selectedCust &&
+                Number(item.remainingQty) > 0
+            );
+
+            if (filteredInvoices.length === 0) {
+                container.innerHTML = '<p class="text-green-600 font-semibold">इस कस्टमर के सभी ऑर्डर / इनवॉइस पूरी तरह से डिस्पच हो चुके हैं!</p>';
+                return;
+            }
+
+            let html = `<table class="w-full text-left border-collapse mt-2">
+                <thead>
+                    <tr class="bg-slate-100 text-xs text-slate-600 border-b">
+                        <th class="p-2"><input type="checkbox" id="select-all-invoices" onclick="toggleAllInvoices(this)"> Select All</th>
+                        <th class="p-2">InvoiceNo</th>
+                        <th class="p-2">MaterialCode</th>
+                        <th class="p-2">MaterialDescription</th>
+                        <th class="p-2">OrderQty</th>
+                        <th class="p-2">UNIT</th>
+                        <th class="p-2">MRP</th>
+                        <th class="p-2">Pending Qty</th>
+                        <th class="p-2">Multi-Bin / Line-1 Stock &amp; Picking Breakdown</th>
+                    </tr>
+                </thead>
+                <tbody class="text-sm">`;
+
+            filteredInvoices.forEach((inv, idx) => {
+                const matCode = String(inv.MaterialCode || inv.Material || "").trim();
+                const matDesc = inv.MaterialDescription || inv.Description || "-";
+                const origQty = Number(inv.originalQty || inv.OrderQty || inv.Qty || 0);
+                const unit = inv.UNIT || inv.Unit || "-";
+                const mrp = inv.MRP ?? 0;
+                const pendingQty = Number(inv.remainingQty);
+
+                const availableBins = inwardRecords.filter(r => String(r.mat).trim().toUpperCase() === matCode.toUpperCase() && Number(r.qty) > 0);
+
+                let binListHTML = `<div class="space-y-1.5 p-2 bg-slate-50 border rounded" data-required-qty="${pendingQty}" data-inv-idx="${idx}">`;
+                if (availableBins.length > 0) {
+                    availableBins.forEach((b, bIdx) => {
+                        const binBadgeColor = b.bin === FLOOR_BIN_NAME ? "text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded" : "text-blue-800";
+                        binListHTML += `<div class="flex items-center gap-2 text-xs">
+                            <input type="checkbox" class="bin-checkbox-${idx}" data-inv-idx="${idx}" data-bin="${b.bin}" data-mat="${matCode}">
+                            <span class="font-mono font-bold ${binBadgeColor}">Bin: ${b.bin}</span>
+                            <span class="text-slate-600">(Avail: ${b.qty}, MRP: ${b.mrp ?? mrp})</span>
+                            <input type="number" id="pick-qty-${idx}-${bIdx}" value="" placeholder="Pick Qty" class="p-1 border rounded text-xs w-20 bg-white bin-qty-input-${idx}" oninput="validatePartialPick(${idx}, ${pendingQty})" disabled>
+                        </div>`;
+                    });
+                } else {
+                    binListHTML += `<span class="text-red-500 text-xs font-bold">⚠️ कोई स्टॉक उपलब्ध नहीं है!</span>`;
+                }
+                binListHTML += `<div class="text-xs font-semibold text-purple-700 mt-1">Total Picking Now: <span id="total-picked-${idx}">0</span> / Pending: ${pendingQty} ${unit !== "-" ? unit : ""}</div>`;
+                binListHTML += `</div>`;
+
+                html += `<tr class="border-b hover:bg-slate-50 align-top">
+                    <td class="p-2 pt-3"><input type="checkbox" class="inv-checkbox" data-idx="${idx}" value="${inv.InvoiceNo || inv.Invoice || "INV-" + idx}" data-unique-id="${inv.uniqueId}"></td>
+                    <td class="p-2 pt-3 font-semibold">${inv.InvoiceNo || inv.Invoice || "INV-" + idx}</td>
+                    <td class="p-2 pt-3 font-bold">${matCode}</td>
+                    <td class="p-2 pt-3 text-xs text-slate-600">${matDesc}</td>
+                    <td class="p-2 pt-3 text-slate-500">${origQty}</td>
+                    <td class="p-2 pt-3 font-semibold text-slate-700">${unit}</td>
+                    <td class="p-2 pt-3 font-semibold">${mrp}</td>
+                    <td class="p-2 pt-3 font-bold text-amber-600" id="pending-qty-${idx}">${pendingQty}</td>
+                    <td class="p-2 pt-2 space-y-1">${binListHTML}</td>
+                </tr>`;
+            });
+
+            html += `</tbody></table>
+            <button onclick="generatePickSlip()" class="mt-4 px-4 py-2 bg-purple-600 text-white rounded font-bold text-sm shadow hover:bg-purple-700">🖨️ Generate Sequential Pick Slip (SANAND)</button>`;
+
+            container.innerHTML = html;
+        }
+
+        function toggleAllInvoices(source) {
+            document.querySelectorAll(".inv-checkbox").forEach(cb => { cb.checked = source.checked; });
+        }
+
+        function validatePartialPick(idx, maxAllowed) {
+            const container = document.querySelector(`[data-inv-idx="${idx}"]`);
+            if (!container) return;
+            const inputs = container.querySelectorAll(".bin-qty-input-" + idx);
+            let sum = 0;
+            inputs.forEach(inp => { sum += Number(inp.value || 0); });
+            const counterSpan = document.getElementById(`total-picked-${idx}`);
+            if (counterSpan) {
+                counterSpan.textContent = sum;
+                if (sum > maxAllowed) {
+                    counterSpan.classList.add("text-red-600", "font-bold");
+                    counterSpan.classList.remove("text-purple-700");
+                } else {
+                    counterSpan.classList.remove("text-red-600", "font-bold");
+                    counterSpan.classList.add("text-purple-700");
+                }
+            }
+        }
+
+        document.addEventListener("change", function(e) {
+            if (e.target.type === "checkbox" && e.target.dataset.bin) {
+                const container = e.target.closest("div");
+                const input = container.querySelector('input[type="number"]');
+                if (input) {
+                    input.disabled = !e.target.checked;
+                    if (e.target.checked) {
+                        input.focus();
+                    } else {
+                        input.value = "";
+                        const idx = e.target.dataset.invIdx;
+                        const maxAllowed = Number(container.dataset.requiredQty || 0);
+                        validatePartialPick(idx, maxAllowed);
+                    }
+                }
+            }
+        });
+
+        function generatePickSlip() {
+            const selectedCust = document.getElementById("select-customer").value;
+            const checkboxes = document.querySelectorAll(".inv-checkbox:checked");
+
+            if (checkboxes.length === 0) {
+                alert("कृपया कम से कम एक इनवॉइस चुनें!");
+                return;
+            }
+
+            const batchId = "SANAND-" + String(slipCounter).padStart(2, "0");
+            slipCounter++;
+
+            const todayDateStr = formatDateOnly(new Date());
+            const generatedBatchItems = [];
+            let successCount = 0;
+
+            for (const chk of checkboxes) {
+                const idx = chk.getAttribute("data-idx");
+                const uniqueId = chk.dataset.uniqueId;
+                let inv = sapSalesData.find(item => item.uniqueId === uniqueId);
+                if (!inv) inv = sapSalesData[idx];
+
+                const matCode = String(inv.MaterialCode || inv.Material || "").trim();
+                const matDesc = inv.MaterialDescription || inv.Description || "-";
+                const invoiceNo = inv.InvoiceNo || inv.Invoice || "INV-" + idx;
+                const unit = inv.UNIT || inv.Unit || "-";
+                const pendingQty = Number(inv.remainingQty);
+
+                const binCheckboxes = document.querySelectorAll(`input[type="checkbox"][data-inv-idx="${idx}"]:checked`);
+                if (binCheckboxes.length === 0) {
+                    alert(`इनवॉइस ${invoiceNo} के लिए कम से कम एक बिन और क्वांटिटी चुनें!`);
+                    return;
+                }
+
+                let currentSum = 0;
+                binCheckboxes.forEach(bChk => {
+                    const bIdx = Array.from(bChk.closest("div").parentNode.children).indexOf(bChk.closest("div"));
+                    const qtyInput = document.getElementById(`pick-qty-${idx}-${bIdx}`);
+                    currentSum += Number(qtyInput ? qtyInput.value : 0);
+                });
+
+                if (currentSum <= 0 || currentSum > pendingQty) {
+                    alert(`एरर (Invoice: ${invoiceNo}): पिक की जाने वाली क्वांटिटी (${currentSum}) 0 से अधिक और पेंडिंग क्वांटिटी (${pendingQty}) से ज़्यादा नहीं होनी चाहिए!`);
+                    return;
+                }
+
+                for (const bChk of binCheckboxes) {
+                    const binName = bChk.dataset.bin;
+                    const bIdx = Array.from(bChk.closest("div").parentNode.children).indexOf(bChk.closest("div"));
+                    const qtyInput = document.getElementById(`pick-qty-${idx}-${bIdx}`);
+                    const pickQty = Number(qtyInput ? qtyInput.value : 0);
+
+                    if (pickQty > 0) {
+                        const binStockRecord = inwardRecords.find(r => r.bin === binName && String(r.mat).trim().toUpperCase() === matCode.toUpperCase());
+                        if (!binStockRecord || Number(binStockRecord.qty) < pickQty) {
+                            alert(`एरर: बिन ${binName} में पर्याप्त ${matCode} स्टॉक उपलब्ध नहीं है!`);
+                            return;
+                        }
+
+                        const itemMrp = inv.MRP ?? binStockRecord.mrp ?? 0;
+                        binStockRecord.qty = Number(binStockRecord.qty) - pickQty;
+
+                        const newRec = {
+                            id: Date.now() + Math.random(),
+                            batchId,
+                            date: todayDateStr,
+                            customer: selectedCust,
+                            invoice: invoiceNo,
+                            bin: binName,
+                            mat: matCode,
+                            desc: matDesc,
+                            unit,
+                            mrp: itemMrp,
+                            qty: pickQty,
+                            uniqueId
+                        };
+                        dispatchRecords.push(newRec);
+                        generatedBatchItems.push(newRec);
+                        successCount++;
+                    }
+                }
+
+                inv.remainingQty = pendingQty - currentSum;
+            }
+
+            if (successCount > 0) {
+                syncStateToCloud();
+                document.getElementById("print-content").innerHTML = buildPickSlipPrintTableHTML(generatedBatchItems);
+                document.getElementById("print-modal").classList.remove("hidden");
+                populateCustomerDropdown();
+                loadCustomerInvoices();
+            }
+        }
+
+        function reprintSlip(batchId) {
+            let matches = dispatchRecords.filter(r => String(r.batchId).trim() === String(batchId).trim());
+            if (matches.length === 0) {
+                matches = dispatchRecords.filter(r => String(r.invoice).trim() === String(batchId).trim());
+            }
+            if (matches.length === 0) {
+                alert("इस पिक स्लिप के लिए कोई डेटा नहीं मिला!");
+                return;
+            }
+
+            document.getElementById("print-content").innerHTML = buildPickSlipPrintTableHTML(matches);
+            document.getElementById("print-modal").classList.remove("hidden");
+        }
+
+        function printSelectedSummarySlips() {
+            const checkedBoxes = document.querySelectorAll(".summary-checkbox:checked");
+            if (checkedBoxes.length === 0) {
+                alert("कृपया प्रिंट करने के लिए कम से कम एक पिक स्लिप सेलेक्ट करें!");
+                return;
+            }
+
+            const selectedBatchIds = [...new Set(Array.from(checkedBoxes).map(cb => cb.value))];
+            const combinedMatches = dispatchRecords.filter(r => selectedBatchIds.includes(r.batchId || r.invoice));
+
+            if (combinedMatches.length === 0) {
+                alert("सेलेक्टेड स्लिप्स के लिए कोई डेटा नहीं मिला!");
+                return;
+            }
+
+            document.getElementById("print-content").innerHTML = buildPickSlipPrintTableHTML(combinedMatches);
+            document.getElementById("print-modal").classList.remove("hidden");
+        }
+
+        function toggleAllSummary(source) {
+            document.querySelectorAll(".summary-checkbox").forEach(cb => { cb.checked = source.checked; });
+        }
+
+        function reverseDispatch(dispatchId) {
+            if (!verifyAdminAccess("Reverse Pick Slip / Dispatch")) return;
+
+            const recordIdx = dispatchRecords.findIndex(r => r.id === dispatchId);
+            if (recordIdx === -1) return;
+
+            const rec = dispatchRecords[recordIdx];
+            const confirmMsg = `Admin Confirmed: क्या आप इस डिस्पच / Pick Slip (${rec.batchId || rec.invoice}, Qty: ${rec.qty}, Bin: ${rec.bin}) को रिवर्स करना चाहते हैं?`;
+
+            if (confirm(confirmMsg)) {
+                const binRec = inwardRecords.find(r => r.bin === rec.bin && String(r.mat).trim().toUpperCase() === rec.mat.toUpperCase());
+                if (binRec) {
+                    binRec.qty = Number(binRec.qty) + Number(rec.qty);
+                } else {
+                    inwardRecords.push({
+                        id: Date.now(),
+                        plant: "3240",
+                        vehicle: "REVERSAL",
+                        transporter: "-",
+                        challan: "-",
+                        mat: rec.mat,
+                        desc: rec.desc,
+                        sku: rec.unit || "-",
+                        mrp: rec.mrp ?? 0,
+                        batch: "REV",
+                        qty: rec.qty,
+                        bin: rec.bin
+                    });
+                }
+
+                const sapItem = sapSalesData.find(s => s.uniqueId === rec.uniqueId);
+                if (sapItem) {
+                    sapItem.remainingQty = Number(sapItem.remainingQty) + Number(rec.qty);
+                }
+
+                dispatchRecords.splice(recordIdx, 1);
+                syncStateToCloud();
+
+                alert("Admin द्वारा डिस्पच / Pick Slip सफलतापूर्वक रिवर्स और क्लाउड सिंक हो गया है!");
+                renderDispatchSummary();
+                populateCustomerDropdown();
+            }
+        }
+
+        function buildStockReportRows(scope, locationFilter, matQuery) {
+            const activeStock = inwardRecords.filter(r => Number(r.qty) > 0);
+            const occupiedBinSet = new Set(activeStock.map(r => normalizeBinCode(r.bin)));
+            const allBins = getAll2400Bins();
+            const q = String(matQuery || "").trim().toUpperCase();
+
+            const emptyBinRows = q
+                ? []
+                : allBins
+                    .filter(bin => !occupiedBinSet.has(bin) && matchesLocationFilter(bin, locationFilter))
+                    .map(bin => ({
+                        "Storage Bin": bin,
+                        "Material Code": "-",
+                        "Description": "EMPTY BIN",
+                        "Unit": "-",
+                        "MRP": "-",
+                        "Qty.": 0,
+                        isEmpty: true
+                    }));
+
+            const occupiedRows = activeStock
+                .filter(item => {
+                    if (!matchesLocationFilter(item.bin, locationFilter)) return false;
+                    if (!q) return true;
+                    return String(item.mat || "").toUpperCase().includes(q) || String(item.desc || "").toUpperCase().includes(q);
+                })
+                .map(item => ({
+                    "Storage Bin": item.bin,
+                    "Material Code": item.mat,
+                    "Description": item.desc || "-",
+                    "Unit": item.sku || "-",
+                    "MRP": item.mrp ?? 0,
+                    "Qty.": Number(item.qty),
+                    isEmpty: false
+                }));
+
+            if (scope === "empty_only") return emptyBinRows;
+            if (scope === "with_empty") return [...occupiedRows, ...emptyBinRows];
+            return occupiedRows;
+        }
+
+        function renderStockReport() {
+            const tbody = document.getElementById("stock-report-list");
+            const scopeElem = document.getElementById("stock-report-scope");
+            const locElem = document.getElementById("stock-report-location");
+            const searchElem = document.getElementById("stock-report-material-search");
+            const badgeElem = document.getElementById("stock-report-summary-badge");
+
+            const scope = scopeElem ? scopeElem.value : "occupied";
+            const locationFilter = locElem ? locElem.value : "ALL";
+            const matQuery = searchElem ? searchElem.value : "";
+            const rows = buildStockReportRows(scope, locationFilter, matQuery);
+
+            if (badgeElem) {
+                const totalQty = rows.reduce((sum, r) => sum + Number(r["Qty."] || 0), 0);
+                badgeElem.textContent = `Showing ${rows.length} rows | Total Qty: ${totalQty}`;
+            }
+
+            if (rows.length === 0) {
+                const emptyMsg = scope === "empty_only"
+                    ? "चयनित फ़िल्टर में कोई खाली बिन उपलब्ध नहीं है।"
+                    : "चयनित फ़िल्टर या Material Code के लिए कोई स्टॉक उपलब्ध नहीं है।";
+                tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400">${emptyMsg}</td></tr>`;
+                return;
+            }
+
+            let html = "";
+            rows.forEach(item => {
+                const binStyle = item["Storage Bin"] === FLOOR_BIN_NAME
+                    ? "font-mono font-bold text-amber-800 bg-amber-100"
+                    : (item.isEmpty ? "font-mono font-bold text-emerald-800 bg-emerald-50" : "font-mono font-bold text-blue-800");
+                const descStyle = item.isEmpty ? "text-xs font-semibold text-emerald-700" : "text-xs text-slate-600";
+                const qtyStyle = item.isEmpty ? "font-bold text-slate-400" : "font-bold text-green-600";
+
+                html += `<tr class="border-b hover:bg-slate-50">
+                    <td class="p-2 ${binStyle}">${item["Storage Bin"]}</td>
+                    <td class="p-2 font-bold">${item["Material Code"]}</td>
+                    <td class="p-2 ${descStyle}">${item["Description"]}</td>
+                    <td class="p-2 font-semibold">${item["Unit"]}</td>
+                    <td class="p-2 font-semibold">${item.isEmpty ? "-" : item["MRP"]}</td>
+                    <td class="p-2 ${qtyStyle}">${item["Qty."]}</td>
+                </tr>`;
+            });
+            tbody.innerHTML = html;
+        }
+
+        function exportStockReportExcel() {
+            const scopeElem = document.getElementById("stock-report-scope");
+            const locElem = document.getElementById("stock-report-location");
+            const searchElem = document.getElementById("stock-report-material-search");
+            const scope = scopeElem ? scopeElem.value : "occupied";
+            const locationFilter = locElem ? locElem.value : "ALL";
+            const matQuery = searchElem ? searchElem.value : "";
+            const rows = buildStockReportRows(scope, locationFilter, matQuery);
+
+            if (rows.length === 0) {
+                alert("निर्यात (Export) के लिए कोई रिकॉर्ड उपलब्ध नहीं है!");
+                return;
+            }
+
+            const exportData = rows.map(({ isEmpty, ...rest }) => rest);
+            const ws = XLSX.utils.json_to_sheet(exportData);
+            const wb = XLSX.utils.book_new();
+            const sheetName = scope === "empty_only" ? "Empty_Bins" : (scope === "with_empty" ? "Stock_And_Empty_Bins" : "Stock_Report");
+            const locTag = locationFilter === "ALL" ? "All_Locations" : locationFilter;
+            const matTag = matQuery.trim() ? `_${matQuery.trim().replace(/[^a-zA-Z0-9_-]/g, "")}` : "";
+            const scopeTag = scope === "empty_only" ? "Empty_Bins" : (scope === "with_empty" ? "Stock_With_Empty" : "Stock_Only");
+            XLSX.utils.book_append_sheet(wb, ws, sheetName);
+            XLSX.writeFile(wb, `Stock_Report_${locTag}${matTag}_${scopeTag}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+            alert("स्टॉक रिपोर्ट एक्सेल फ़ाइल सफलतापूर्वक डाउनलोड हो गई है!");
+        }
+
+        function renderDispatchSummary() {
+            const tbody = document.getElementById("dispatch-summary-list");
+            if (dispatchRecords.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="11" class="p-4 text-center text-slate-400">कोई डिस्पच रिकॉर्ड उपलब्ध नहीं है।</td></tr>`;
+                return;
+            }
+            let html = "";
+            dispatchRecords.forEach(item => {
+                const slipId = item.batchId || item.invoice;
+                html += `<tr class="border-b hover:bg-slate-50">
+                    <td class="p-2"><input type="checkbox" class="summary-checkbox" value="${slipId}"></td>
+                    <td class="p-2 font-mono font-bold text-purple-700">${slipId}</td>
+                    <td class="p-2 text-xs text-slate-600 whitespace-nowrap">${formatDateOnly(item.date)}</td>
+                    <td class="p-2 font-semibold">${item.customer}</td>
+                    <td class="p-2">${item.invoice}</td>
+                    <td class="p-2 bg-blue-50 font-mono font-bold text-blue-800">${item.bin}</td>
+                    <td class="p-2"><b>${item.mat}</b><br><span class="text-xs text-slate-500">${item.desc || "-"}</span></td>
+                    <td class="p-2 font-semibold">${item.unit || "-"}</td>
+                    <td class="p-2 font-semibold">${item.mrp ?? 0}</td>
+                    <td class="p-2 font-bold text-purple-600">${item.qty}</td>
+                    <td class="p-2 space-x-1">
+                        <button onclick="reprintSlip('${slipId}')" class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-bold hover:bg-blue-200">🖨️ Reprint</button>
+                        <button onclick="reverseDispatch(${item.id})" class="px-2 py-1 bg-red-100 text-red-700 rounded text-xs font-bold hover:bg-red-200">🔒 Admin Reverse</button>
+                    </td>
+                </tr>`;
+            });
+            tbody.innerHTML = html;
+        }
+
+        function addInwardRow() {
+            const container = document.getElementById("inward-rows-container");
+            const rowDiv = document.createElement("div");
+            rowDiv.className = "grid grid-cols-1 md:grid-cols-6 gap-2 items-center bg-white p-2 border rounded-lg shadow-sm inward-item-row";
+            rowDiv.innerHTML = `
+                <div>
+                    <input type="text" placeholder="Material Code" class="p-1.5 border rounded text-sm w-full item-mat" oninput="autoFillMaterial(this)">
+                </div>
+                <div class="col-span-2">
+                    <input type="text" placeholder="Description &amp; PackSize" class="p-1.5 border bg-slate-50 rounded text-xs w-full item-desc" readonly>
+                </div>
+                <div>
+                    <input type="text" placeholder="Unit" class="p-1.5 border rounded text-sm w-full item-sku">
+                </div>
+                <div>
+                    <input type="number" placeholder="MRP" class="p-1.5 border rounded text-sm w-full item-mrp">
+                </div>
+                <div class="flex gap-1">
+                    <input type="number" placeholder="Qty." class="p-1.5 border rounded text-sm w-1/2 item-qty">
+                    <input type="text" placeholder="Bin / Line-1" class="p-1.5 border rounded text-sm w-1/2 item-bin">
+                    <button onclick="this.closest('.inward-item-row').remove()" class="px-2 py-1 bg-red-100 text-red-600 rounded text-xs font-bold">✕</button>
+                </div>
+            `;
+            container.appendChild(rowDiv);
+            const matInput = rowDiv.querySelector(".item-mat");
+            if (matInput) matInput.focus();
+        }
+
+        function autoFillMaterial(inputElem) {
+            const code = String(inputElem.value).trim().toUpperCase();
+            const row = inputElem.closest(".inward-item-row");
+            const descInput = row.querySelector(".item-desc");
+            const skuInput = row.querySelector(".item-sku");
+
+            const matched = materialMasterData.find(m => String(m.MaterialCode || m.Code || "").trim().toUpperCase() === code);
+            if (matched) {
+                const desc = matched.MaterialDescription || matched.Description || "-";
+                const unit = matched.Unit || matched.UNIT || matched.PackingType || "";
+                const packSize = matched.PackSize || matched.Size || "";
+                descInput.value = packSize ? `${desc} (${packSize})` : desc;
+                skuInput.value = unit || "-";
+            } else {
+                descInput.value = "Material Not Found in Master";
+            }
+        }
+
+        function postAllInwards() {
+            const vehicle = document.getElementById("in-vehicle").value || "MANUAL";
+            const rowElements = document.querySelectorAll(".inward-item-row");
+            let count = 0;
+
+            rowElements.forEach(row => {
+                const mat = row.querySelector(".item-mat").value;
+                const descFull = row.querySelector(".item-desc").value;
+                const sku = row.querySelector(".item-sku").value || "-";
+                const mrp = row.querySelector(".item-mrp").value || "0";
+                const qty = Number(row.querySelector(".item-qty").value);
+                const bin = normalizeBinCode(row.querySelector(".item-bin").value);
+
+                if (mat && qty && bin) {
+                    inwardRecords.push({
+                        id: Date.now() + Math.random(),
+                        plant: "3240",
+                        vehicle,
+                        transporter: "Manual",
+                        challan: "-",
+                        mat: mat.trim(),
+                        desc: descFull,
+                        sku,
+                        batch: "B1",
+                        mrp,
+                        qty,
+                        bin
+                    });
+                    count++;
+                }
+            });
+
+            if (count === 0) {
+                alert("कृपया मटीरियल कोड, क्वांटिटी और बिन या Line-1 भरें!");
+                return;
+            }
+
+            syncStateToCloud();
+            document.getElementById("in-vehicle").value = "";
+            document.getElementById("inward-rows-container").innerHTML = "";
+            addInwardRow();
+            renderInwardTable();
+            alert(`सफलतापूर्वक ${count} आइटम इनवर्ड और क्लाउड सिंक हो गए हैं!`);
+        }
+
+        function renderInwardTable() {
+            const tbody = document.getElementById("inward-list");
+            if (inwardRecords.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-400">कोई इनवर्ड रिकॉर्ड उपलब्ध नहीं है।</td></tr>`;
+                return;
+            }
+            let html = "";
+            inwardRecords.forEach((item, idx) => {
+                const binCellClass = item.bin === FLOOR_BIN_NAME ? "bg-amber-100 text-amber-900 font-mono font-bold" : "uppercase bg-amber-50 font-mono";
+                html += `<tr class="border-b hover:bg-slate-50">
+                    <td class="p-2 ${binCellClass}">${item.bin}</td>
+                    <td class="p-2 font-bold">${item.mat}</td>
+                    <td class="p-2 text-xs text-slate-600">${item.desc || "-"}</td>
+                    <td class="p-2 font-semibold">${item.sku || "-"}</td>
+                    <td class="p-2 font-semibold">${item.mrp ?? 0}</td>
+                    <td class="p-2 font-bold text-green-600">${item.qty}</td>
+                    <td class="p-2">
+                        <button onclick="deleteInward(${item.id || idx})" class="px-2 py-1 bg-red-100 text-red-600 rounded text-xs font-bold hover:bg-red-200">Delete</button>
+                    </td>
+                </tr>`;
+            });
+            tbody.innerHTML = html;
+        }
+
+        function deleteInward(id) {
+            inwardRecords = inwardRecords.filter(item => (item.id !== id && item !== inwardRecords[id]));
+            syncStateToCloud();
+            renderInwardTable();
+            alert("इनवर्ड रिकॉर्ड हटा दिया गया है!");
+        }
+
+        function renderBins() {
+            const line1Matched = inwardRecords.filter(item => item.bin === FLOOR_BIN_NAME && Number(item.qty) > 0);
+            const line1TotalQty = line1Matched.reduce((sum, item) => sum + Number(item.qty), 0);
+            const line1Card = document.getElementById("line1-summary-card");
+            if (line1Card) {
+                line1Card.textContent = `Line-1 Total Qty: ${line1TotalQty} (${line1Matched.length} entries)`;
+            }
+
+            const rack = document.getElementById("select-rack").value;
+            const levels = ["F", "E", "D", "C", "B", "A"];
+            let html = "";
+            levels.forEach(lvl => {
+                for (let i = 1; i <= 20; i++) {
+                    const col = i < 10 ? "0" + i : String(i);
+                    const binName = rack + lvl + col;
+
+                    const matched = inwardRecords.filter(item => item.bin === binName && Number(item.qty) > 0);
+                    const hasStock = matched.length > 0;
+                    const totalQty = matched.reduce((sum, item) => sum + Number(item.qty), 0);
+
+                    if (hasStock) {
+                        html += `<div class="p-2 bg-blue-100 border border-blue-300 text-blue-900 rounded text-center text-xs font-mono shadow-sm">
+                            <span class="font-bold">${binName}</span><br>
+                            <span class="font-semibold">Qty: ${totalQty}</span>
+                        </div>`;
+                    } else {
+                        html += `<div class="p-2 bg-emerald-50 border border-emerald-200 rounded text-center text-xs font-mono">
+                            <span class="font-bold text-slate-700">${binName}</span><br>
+                            <span class="text-slate-400">Empty</span>
+                        </div>`;
+                    }
+                }
+            });
+            document.getElementById("bin-grid").innerHTML = html;
+        }
+
+        function getFilteredStockForOut(queryStr) {
+            const q = String(queryStr || "").trim().toUpperCase();
+            return inwardRecords.filter(r => {
+                if (Number(r.qty) <= 0) return false;
+                if (!q) return true;
+                return String(r.mat || "").toUpperCase().includes(q) || String(r.desc || "").toUpperCase().includes(q);
+            });
+        }
+
+        function renderBinMatchSummary(matches, targetElemId, queryStr) {
+            const box = document.getElementById(targetElemId);
+            if (!box) return;
+            const q = String(queryStr || "").trim();
+            if (!q) {
+                box.innerHTML = `कुल उपलब्ध स्टॉक एंट्री: <b>${matches.length}</b>। किसी खास मटीरियल के बिन जानने के लिए ऊपर Material Code डालें।`;
+                return;
+            }
+            if (matches.length === 0) {
+                box.innerHTML = `<span class="text-red-600 font-semibold">"${q}" के लिए किसी बिन या Line-1 में स्टॉक नहीं मिला।</span>`;
+                return;
+            }
+            const summaryTags = matches.map(m =>
+                `<span class="inline-block bg-white border border-sky-300 px-2 py-0.5 rounded font-mono font-semibold mr-1 mb-1">${m.bin} (${m.qty} ${m.sku || ""})</span>`
+            ).join("");
+            box.innerHTML = `<div class="mb-1"><b>"${q}"</b> यहाँ उपलब्ध है (<b>${matches.length}</b> लोकेशन):</div><div>${summaryTags}</div>`;
+        }
+
+        function initConversionTab() {
+            populateConversionSourceDropdown();
+            renderConversionHistory();
+        }
+
+        function populateConversionSourceDropdown() {
+            const q = document.getElementById("conv-source-search") ? document.getElementById("conv-source-search").value : "";
+            const select = document.getElementById("conv-source-select");
+            const matches = getFilteredStockForOut(q);
+            renderBinMatchSummary(matches, "conv-bin-matches", q);
+
+            select.innerHTML = '<option value="">-- उपलब्ध स्टॉक (Bin / Line-1) चुनें --</option>';
+            matches.forEach(item => {
+                const opt = document.createElement("option");
+                opt.value = String(item.id);
+                opt.textContent = `Bin: ${item.bin} | Mat: ${item.mat} - ${item.desc || "-"} (Avail: ${item.qty} ${item.sku || ""})`;
+                select.appendChild(opt);
+            });
+            if (matches.length === 1) {
+                select.value = String(matches[0].id);
+            }
+            onSelectConversionSource();
+        }
+
+        function onSelectConversionSource() {
+            const selectedId = document.getElementById("conv-source-select").value;
+            const infoBox = document.getElementById("conv-source-info");
+            const record = inwardRecords.find(r => String(r.id) === String(selectedId));
+            if (!record) {
+                infoBox.textContent = "उपलब्ध स्टॉक: 0";
+                return;
+            }
+            infoBox.innerHTML = `<b>Selected Bin:</b> <span class="font-mono font-bold text-blue-800">${record.bin}</span> | <b>Material:</b> ${record.mat} | <b>Available Qty:</b> <span class="text-green-700 font-bold">${record.qty} ${record.sku || ""}</span> | <b>MRP:</b> ${record.mrp ?? 0}`;
+        }
+
+        function autoFillConversionTarget() {
+            const code = String(document.getElementById("conv-target-mat").value).trim().toUpperCase();
+            const descInput = document.getElementById("conv-target-desc");
+            const unitInput = document.getElementById("conv-target-unit");
+            const matched = materialMasterData.find(m => String(m.MaterialCode || m.Code || "").trim().toUpperCase() === code);
+            if (matched) {
+                const desc = matched.MaterialDescription || matched.Description || "-";
+                const unit = matched.Unit || matched.UNIT || matched.PackingType || "";
+                const packSize = matched.PackSize || matched.Size || "";
+                descInput.value = packSize ? `${desc} (${packSize})` : desc;
+                if (unit) unitInput.value = unit;
+            }
+        }
+
+        function executeProductConversion() {
+            const selectedId = document.getElementById("conv-source-select").value;
+            const consumeQty = Number(document.getElementById("conv-source-qty").value);
+            const targetMat = String(document.getElementById("conv-target-mat").value).trim();
+            const targetUnit = String(document.getElementById("conv-target-unit").value || "-").trim();
+            const targetDesc = String(document.getElementById("conv-target-desc").value || "-").trim();
+            const targetQty = Number(document.getElementById("conv-target-qty").value);
+            const targetMrp = String(document.getElementById("conv-target-mrp").value || "0").trim();
+            const targetBin = normalizeBinCode(document.getElementById("conv-target-bin").value);
+
+            const sourceRecord = inwardRecords.find(r => String(r.id) === String(selectedId));
+            if (!sourceRecord) {
+                alert("कृपया Source Product और Bin चुनें!");
+                return;
+            }
+            if (!consumeQty || consumeQty <= 0 || consumeQty > Number(sourceRecord.qty)) {
+                alert(`एरर: Consume Qty 0 से अधिक और उपलब्ध स्टॉक (${sourceRecord.qty}) से कम या बराबर होनी चाहिए!`);
+                return;
+            }
+            if (!targetMat || !targetQty || targetQty <= 0 || !targetBin) {
+                alert("कृपया Target Material Code, New Qty. और Target Bin / Line-1 भरें!");
+                return;
+            }
+
+            sourceRecord.qty = Number(sourceRecord.qty) - consumeQty;
+
+            const existingTarget = inwardRecords.find(r =>
+                r.bin === targetBin &&
+                String(r.mat).trim().toUpperCase() === targetMat.toUpperCase() &&
+                String(r.mrp || "0") === targetMrp
+            );
+
+            if (existingTarget) {
+                existingTarget.qty = Number(existingTarget.qty) + targetQty;
+            } else {
+                inwardRecords.push({
+                    id: Date.now() + Math.random(),
+                    plant: sourceRecord.plant || "3240",
+                    vehicle: "CONVERSION",
+                    transporter: "Internal Repack",
+                    challan: "CONV",
+                    mat: targetMat,
+                    desc: targetDesc,
+                    sku: targetUnit,
+                    batch: "CONV",
+                    mrp: targetMrp,
+                    qty: targetQty,
+                    bin: targetBin
+                });
+            }
+
+            conversionRecords.unshift({
+                id: Date.now(),
+                date: formatDateOnly(new Date()),
+                fromBin: sourceRecord.bin,
+                fromMat: sourceRecord.mat,
+                fromDesc: sourceRecord.desc || "-",
+                fromQty: consumeQty,
+                fromUnit: sourceRecord.sku || "",
+                toBin: targetBin,
+                toMat: targetMat,
+                toDesc: targetDesc,
+                toQty: targetQty,
+                toUnit: targetUnit
+            });
+
+            syncStateToCloud();
+
+            document.getElementById("conv-source-qty").value = "";
+            document.getElementById("conv-target-mat").value = "";
+            document.getElementById("conv-target-unit").value = "";
+            document.getElementById("conv-target-desc").value = "";
+            document.getElementById("conv-target-qty").value = "";
+            document.getElementById("conv-target-mrp").value = "";
+            document.getElementById("conv-target-bin").value = "";
+
+            initConversionTab();
+            alert(`सफल! ${consumeQty} ${sourceRecord.sku || ""} (${sourceRecord.mat}) ${sourceRecord.bin} से निकलकर ${targetQty} ${targetUnit} (${targetMat}) ${targetBin} में अपडेट और क्लाउड सिंक हो गया है।`);
+        }
+
+        function renderConversionHistory() {
+            const tbody = document.getElementById("conversion-history-list");
+            if (conversionRecords.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-400">अभी तक कोई प्रोडक्ट कन्वर्ज़न रिकॉर्ड नहीं है।</td></tr>`;
+                return;
+            }
+            let html = "";
+            conversionRecords.forEach(c => {
+                html += `<tr class="border-b hover:bg-slate-50">
+                    <td class="p-2 text-xs text-slate-600 whitespace-nowrap">${formatDateOnly(c.date)}</td>
+                    <td class="p-2 font-mono font-bold text-red-700">${c.fromBin}</td>
+                    <td class="p-2"><b>${c.fromMat}</b><br><span class="text-xs text-slate-500">${c.fromDesc}</span></td>
+                    <td class="p-2 font-bold text-red-600">-${c.fromQty} ${c.fromUnit}</td>
+                    <td class="p-2 font-mono font-bold text-emerald-700">${c.toBin}</td>
+                    <td class="p-2"><b>${c.toMat}</b><br><span class="text-xs text-slate-500">${c.toDesc}</span></td>
+                    <td class="p-2 font-bold text-emerald-600">+${c.toQty} ${c.toUnit}</td>
+                </tr>`;
+            });
+            tbody.innerHTML = html;
+        }
+
+        function initTransferTab() {
+            renderMultiBinOutList();
+            renderTransferHistory();
+        }
+
+        function renderMultiBinOutList() {
+            const q = document.getElementById("trf-source-search") ? document.getElementById("trf-source-search").value : "";
+            const container = document.getElementById("trf-multi-bin-list");
+            const matches = getFilteredStockForOut(q);
+
+            if (matches.length === 0) {
+                container.innerHTML = `<p class="p-3 text-xs text-red-600 font-semibold">कोई उपलब्ध स्टॉक नहीं मिला।</p>`;
+                recalcMultiBinOutSummary();
+                return;
+            }
+
+            let html = "";
+            matches.forEach(item => {
+                const binBadge = item.bin === FLOOR_BIN_NAME
+                    ? "bg-amber-100 text-amber-900"
+                    : "bg-sky-100 text-sky-900";
+                html += `<div class="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-white hover:bg-sky-50/40 text-xs">
+                    <div class="flex items-center gap-2">
+                        <input type="checkbox" class="trf-bin-chk" data-id="${item.id}" onchange="toggleMultiBinRow(this)">
+                        <span class="font-mono font-bold px-2 py-0.5 rounded ${binBadge}">${item.bin}</span>
+                        <div>
+                            <span class="font-bold text-slate-800">${item.mat}</span>
+                            <span class="text-slate-500">(${item.desc || "-"})</span>
+                            <div class="text-[11px] text-slate-600">Avail: <b class="text-green-700">${item.qty}</b> ${item.sku || ""} | MRP: ${item.mrp ?? 0}</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-[11px] text-slate-500">Out Qty:</span>
+                        <input type="number" min="1" max="${item.qty}" data-id="${item.id}" data-max="${item.qty}" placeholder="Qty" class="trf-bin-qty p-1.5 border rounded w-24 text-xs font-semibold bg-slate-100" oninput="recalcMultiBinOutSummary()" disabled>
+                    </div>
+                </div>`;
+            });
+            container.innerHTML = html;
+            recalcMultiBinOutSummary();
+        }
+
+        function toggleMultiBinRow(chkElem) {
+            const id = chkElem.dataset.id;
+            const qtyInput = document.querySelector(`.trf-bin-qty[data-id="${id}"]`);
+            if (qtyInput) {
+                qtyInput.disabled = !chkElem.checked;
+                if (chkElem.checked) {
+                    qtyInput.classList.remove("bg-slate-100");
+                    qtyInput.classList.add("bg-white", "border-sky-400");
+                    qtyInput.focus();
+                } else {
+                    qtyInput.value = "";
+                    qtyInput.classList.add("bg-slate-100");
+                    qtyInput.classList.remove("bg-white", "border-sky-400");
+                }
+            }
+            recalcMultiBinOutSummary();
+        }
+
+        function recalcMultiBinOutSummary() {
+            const checkboxes = document.querySelectorAll(".trf-bin-chk:checked");
+            let totalOut = 0;
+            checkboxes.forEach(chk => {
+                const id = chk.dataset.id;
+                const qtyInput = document.querySelector(`.trf-bin-qty[data-id="${id}"]`);
+                const val = Number(qtyInput ? qtyInput.value : 0);
+                if (val > 0) totalOut += val;
+            });
+            const badge = document.getElementById("trf-total-selected-qty");
+            const countSpan = document.getElementById("trf-selected-bin-count");
+            const sumSpan = document.getElementById("trf-summary-out-qty");
+            if (badge) badge.textContent = `Total Out Qty: ${totalOut}`;
+            if (countSpan) countSpan.textContent = String(checkboxes.length);
+            if (sumSpan) sumSpan.textContent = String(totalOut);
+        }
+
+        function executeMultiBinTransfer() {
+            const targetBin = normalizeBinCode(document.getElementById("trf-target-bin").value);
+            const checkedBins = Array.from(document.querySelectorAll(".trf-bin-chk:checked"));
+
+            if (checkedBins.length === 0) {
+                alert("कृपया कम से कम एक Source Bin टिक करें!");
+                return;
+            }
+            if (!targetBin) {
+                alert("कृपया Destination Storage Bin या Line-1 भरें!");
+                return;
+            }
+
+            const plan = [];
+            for (const chk of checkedBins) {
+                const id = chk.dataset.id;
+                const qtyInput = document.querySelector(`.trf-bin-qty[data-id="${id}"]`);
+                const outQty = Number(qtyInput ? qtyInput.value : 0);
+                const sourceRecord = inwardRecords.find(r => String(r.id) === String(id));
+
+                if (!sourceRecord) {
+                    alert("चयनित स्टॉक रिकॉर्ड नहीं मिला!");
+                    return;
+                }
+                if (targetBin === sourceRecord.bin) {
+                    alert(`एरर: Source Bin (${sourceRecord.bin}) और Destination Bin (${targetBin}) एक ही नहीं हो सकते!`);
+                    return;
+                }
+                if (!outQty || outQty <= 0 || outQty > Number(sourceRecord.qty)) {
+                    alert(`एरर (Bin ${sourceRecord.bin}): Out Qty 0 से अधिक और उपलब्ध स्टॉक (${sourceRecord.qty}) से कम या बराबर होनी चाहिए!`);
+                    return;
+                }
+                plan.push({ sourceRecord, outQty });
+            }
+
+            const todayDateStr = formatDateOnly(new Date());
+            plan.forEach(({ sourceRecord, outQty }) => {
+                sourceRecord.qty = Number(sourceRecord.qty) - outQty;
+
+                const existingTarget = inwardRecords.find(r =>
+                    r.bin === targetBin &&
+                    String(r.mat).trim().toUpperCase() === String(sourceRecord.mat).trim().toUpperCase() &&
+                    String(r.mrp || "0") === String(sourceRecord.mrp || "0")
+                );
+
+                if (existingTarget) {
+                    existingTarget.qty = Number(existingTarget.qty) + outQty;
+                } else {
+                    inwardRecords.push({
+                        id: Date.now() + Math.random(),
+                        plant: sourceRecord.plant || "3240",
+                        vehicle: targetBin === FLOOR_BIN_NAME ? "FLOOR-LINE1" : "MULTI-BIN-TRF",
+                        transporter: "Internal Transfer",
+                        challan: "TRF",
+                        mat: sourceRecord.mat,
+                        desc: sourceRecord.desc || "-",
+                        sku: sourceRecord.sku || "-",
+                        batch: sourceRecord.batch || "B1",
+                        mrp: sourceRecord.mrp || "0",
+                        qty: outQty,
+                        bin: targetBin
+                    });
+                }
+
+                transferRecords.unshift({
+                    id: Date.now() + Math.random(),
+                    date: todayDateStr,
+                    fromBin: sourceRecord.bin,
+                    toBin: targetBin,
+                    mat: sourceRecord.mat,
+                    desc: sourceRecord.desc || "-",
+                    unit: sourceRecord.sku || "-",
+                    qty: outQty
+                });
+            });
+
+            syncStateToCloud();
+
+            document.getElementById("trf-target-bin").value = "";
+            initTransferTab();
+            const totalTransferred = plan.reduce((acc, p) => acc + p.outQty, 0);
+            alert(`सफल! ${plan.length} बिन से कुल ${totalTransferred} Qty ${targetBin} में ट्रांसफर और क्लाउड सिंक हो गई है।`);
+        }
+
+        function renderTransferHistory() {
+            const tbody = document.getElementById("transfer-history-list");
+            if (transferRecords.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-400">अभी तक कोई Bin-to-Bin Transfer रिकॉर्ड नहीं है।</td></tr>`;
+                return;
+            }
+            let html = "";
+            transferRecords.forEach(t => {
+                html += `<tr class="border-b hover:bg-slate-50">
+                    <td class="p-2 text-xs text-slate-600 whitespace-nowrap">${formatDateOnly(t.date)}</td>
+                    <td class="p-2 font-mono font-bold text-red-700">${t.fromBin}</td>
+                    <td class="p-2 font-mono font-bold text-sky-700">${t.toBin}</td>
+                    <td class="p-2 font-bold">${t.mat}</td>
+                    <td class="p-2 text-xs text-slate-600">${t.desc}</td>
+                    <td class="p-2 font-semibold">${t.unit}</td>
+                    <td class="p-2 font-bold text-green-700">${t.qty}</td>
+                </tr>`;
+            });
+            tbody.innerHTML = html;
+        }
+
+        renderInwardTable();
+        applyAccessUI();
+        initFirebaseCloudSync();
+    </script>
+</body>
+</html>
