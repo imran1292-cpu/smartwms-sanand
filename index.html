@@ -7,6 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
     <style>
         @media print {
@@ -30,15 +31,15 @@
 
             <form onsubmit="handleLoginSubmit(event)" class="space-y-4">
                 <div>
-                    <label class="block text-xs font-semibold text-slate-700 mb-1">Login ID</label>
-                    <input type="text" id="login-id" required placeholder="e.g. admin" class="w-full p-2.5 border rounded-lg text-sm bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Authorized Email ID / Login ID</label>
+                    <input type="text" id="login-id" required placeholder="e.g. name@company.com or admin" class="w-full p-2.5 border rounded-lg text-sm bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
                 <div>
                     <label class="block text-xs font-semibold text-slate-700 mb-1">Password</label>
                     <input type="password" id="login-password" required placeholder="Password" class="w-full p-2.5 border rounded-lg text-sm bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
                 <p id="login-error" class="text-xs text-red-600 font-semibold hidden"></p>
-                <button type="submit" class="w-full py-2.5 bg-blue-600 text-white rounded-lg font-bold text-sm hover:bg-blue-700 shadow">
+                <button type="submit" id="login-submit-btn" class="w-full py-2.5 bg-blue-600 text-white rounded-lg font-bold text-sm hover:bg-blue-700 shadow">
                     🔐 Login to SmartWMS
                 </button>
             </form>
@@ -556,7 +557,7 @@
             <div class="flex justify-between items-center border-b pb-3">
                 <div>
                     <h3 class="font-bold text-lg text-slate-800">👥 Admin User &amp; Permissions Manager</h3>
-                    <p class="text-xs text-slate-500">नया यूज़र बनाएं, पासवर्ड बदलें, और प्रत्येक यूज़र की अनुमति (Permissions) तय करें।</p>
+                    <p class="text-xs text-slate-500">अधिकृत Email ID बनाएं, पासवर्ड बदलें, और प्रत्येक ईमेल यूज़र की अनुमति (Permissions) तय करें।</p>
                 </div>
                 <button onclick="closeUserModal()" class="text-slate-500 font-bold hover:text-red-600">✕</button>
             </div>
@@ -564,8 +565,8 @@
             <form onsubmit="saveUserFromAdmin(event)" class="bg-slate-50 border p-4 rounded-lg space-y-4">
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
                     <div>
-                        <label class="block text-xs font-semibold text-slate-700 mb-1">Login ID</label>
-                        <input type="text" id="mgr-user-id" required placeholder="e.g. operator1" class="w-full p-2 border rounded text-sm bg-white">
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Authorized Email ID</label>
+                        <input type="text" id="mgr-user-id" required placeholder="e.g. operator1@sanand.com" class="w-full p-2 border rounded text-sm bg-white">
                     </div>
                     <div>
                         <label class="block text-xs font-semibold text-slate-700 mb-1">Full Name</label>
@@ -573,7 +574,7 @@
                     </div>
                     <div>
                         <label class="block text-xs font-semibold text-slate-700 mb-1">Password</label>
-                        <input type="text" id="mgr-user-pass" required placeholder="Password" class="w-full p-2 border rounded text-sm bg-white">
+                        <input type="text" id="mgr-user-pass" required placeholder="Password (min 6 chars for Auth)" class="w-full p-2 border rounded text-sm bg-white">
                     </div>
                     <div>
                         <label class="block text-xs font-semibold text-slate-700 mb-1">Role</label>
@@ -612,7 +613,7 @@
                 <table class="w-full text-left border-collapse text-xs">
                     <thead>
                         <tr class="bg-slate-100 text-slate-700 border-b">
-                            <th class="p-2">Login ID</th>
+                            <th class="p-2">Email / Login ID</th>
                             <th class="p-2">Name</th>
                             <th class="p-2">Role</th>
                             <th class="p-2">Allowed Permissions</th>
@@ -642,18 +643,15 @@
     </div>
 
     <script>
-        // =========================================================================
-        // 1. PASTE YOUR FIREBASE CONFIG BELOW (From Firebase Console -> Project Settings)
-        // =========================================================================
         const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyC78zdpUdiIUXcoZ9SqpxdkHu52s9mRxBw",
-  authDomain: "smartwms-sanand.firebaseapp.com",
-  databaseURL: "https://smartwms-sanand-default-rtdb.firebaseio.com",
-  projectId: "smartwms-sanand",
-  storageBucket: "smartwms-sanand.firebasestorage.app",
-  messagingSenderId: "488720758372",
-  appId: "1:488720758372:web:efa1d62b9cfe924f0a9171",
-  measurementId: "G-SV3LQJP85X"
+            apiKey: "AIzaSyC78zdpUdiIUXcoZ9SqpxdkHu52s9mRxBw",
+            authDomain: "smartwms-sanand.firebaseapp.com",
+            databaseURL: "https://smartwms-sanand-default-rtdb.firebaseio.com",
+            projectId: "smartwms-sanand",
+            storageBucket: "smartwms-sanand.firebasestorage.app",
+            messagingSenderId: "488720758372",
+            appId: "1:488720758372:web:efa1d62b9cfe924f0a9171",
+            measurementId: "G-SV3LQJP85X"
         };
         const CLOUD_DB_ROOT = "smartwms_sanand_prod_v1";
 
@@ -706,8 +704,10 @@
         }
 
         let currentSessionUserId = sessionStorage.getItem("wms_active_user_v34") || "";
+        let firebaseAuth = null;
         let firebaseDb = null;
         let isCloudEnabled = false;
+        let dbListenerAttached = false;
         let isApplyingRemoteUpdate = false;
         let activeTabName = "master";
 
@@ -779,6 +779,42 @@
             if (activeTabName === "transfer") initTransferTab();
         }
 
+        function attachRealtimeDatabaseListener() {
+            if (!isCloudEnabled || !firebaseDb || dbListenerAttached) return;
+            dbListenerAttached = true;
+            updateSyncStatusUI("🔄 Connecting to Firebase Cloud...", true);
+
+            firebaseDb.ref(CLOUD_DB_ROOT).on("value", (snapshot) => {
+                const cloudData = snapshot.val();
+                if (!cloudData) {
+                    syncStateToCloud();
+                    updateSyncStatusUI("☁️ Firebase Live Cloud Synced", true);
+                    return;
+                }
+
+                isApplyingRemoteUpdate = true;
+                inwardRecords = Array.isArray(cloudData.inwardRecords) ? cloudData.inwardRecords : [];
+                sapSalesData = Array.isArray(cloudData.sapSalesData) ? cloudData.sapSalesData : [];
+                dispatchRecords = Array.isArray(cloudData.dispatchRecords) ? cloudData.dispatchRecords : [];
+                materialMasterData = Array.isArray(cloudData.materialMasterData) ? cloudData.materialMasterData : [];
+                conversionRecords = Array.isArray(cloudData.conversionRecords) ? cloudData.conversionRecords : [];
+                transferRecords = Array.isArray(cloudData.transferRecords) ? cloudData.transferRecords : [];
+                slipCounter = Number(cloudData.slipCounter) || 1;
+                if (cloudData.adminPin) adminPin = String(cloudData.adminPin);
+                if (Array.isArray(cloudData.usersData) && cloudData.usersData.length > 0) {
+                    usersData = cloudData.usersData;
+                }
+                saveAllStateToLocal();
+                isApplyingRemoteUpdate = false;
+
+                updateSyncStatusUI("☁️ Firebase Live Cloud Synced", true);
+                refreshActiveView();
+            }, (error) => {
+                console.error("Firebase listener error:", error);
+                updateSyncStatusUI("⚠️ Firebase Permission / Auth Required", false);
+            });
+        }
+
         function initFirebaseCloudSync() {
             const hasValidConfig = FIREBASE_CONFIG &&
                 FIREBASE_CONFIG.apiKey &&
@@ -795,39 +831,22 @@
                 if (!firebase.apps.length) {
                     firebase.initializeApp(FIREBASE_CONFIG);
                 }
+                firebaseAuth = typeof firebase.auth === "function" ? firebase.auth() : null;
                 firebaseDb = firebase.database();
                 isCloudEnabled = true;
-                updateSyncStatusUI("🔄 Connecting to Firebase Cloud...", true);
 
-                firebaseDb.ref(CLOUD_DB_ROOT).on("value", (snapshot) => {
-                    const cloudData = snapshot.val();
-                    if (!cloudData) {
-                        syncStateToCloud();
-                        updateSyncStatusUI("☁️ Firebase Live Cloud Synced", true);
-                        return;
-                    }
-
-                    isApplyingRemoteUpdate = true;
-                    inwardRecords = Array.isArray(cloudData.inwardRecords) ? cloudData.inwardRecords : [];
-                    sapSalesData = Array.isArray(cloudData.sapSalesData) ? cloudData.sapSalesData : [];
-                    dispatchRecords = Array.isArray(cloudData.dispatchRecords) ? cloudData.dispatchRecords : [];
-                    materialMasterData = Array.isArray(cloudData.materialMasterData) ? cloudData.materialMasterData : [];
-                    conversionRecords = Array.isArray(cloudData.conversionRecords) ? cloudData.conversionRecords : [];
-                    transferRecords = Array.isArray(cloudData.transferRecords) ? cloudData.transferRecords : [];
-                    slipCounter = Number(cloudData.slipCounter) || 1;
-                    if (cloudData.adminPin) adminPin = String(cloudData.adminPin);
-                    if (Array.isArray(cloudData.usersData) && cloudData.usersData.length > 0) {
-                        usersData = cloudData.usersData;
-                    }
-                    saveAllStateToLocal();
-                    isApplyingRemoteUpdate = false;
-
-                    updateSyncStatusUI("☁️ Firebase Live Cloud Synced", true);
-                    refreshActiveView();
-                }, (error) => {
-                    console.error("Firebase listener error:", error);
-                    updateSyncStatusUI("⚠️ Firebase Permission / Network Error", false);
-                });
+                if (firebaseAuth) {
+                    firebaseAuth.onAuthStateChanged((authUser) => {
+                        if (authUser) {
+                            attachRealtimeDatabaseListener();
+                        } else {
+                            dbListenerAttached = false;
+                            updateSyncStatusUI("🔒 Login with Authorized Email for Cloud Sync", false);
+                        }
+                    });
+                } else {
+                    attachRealtimeDatabaseListener();
+                }
             } catch (err) {
                 console.error("Firebase init failed:", err);
                 updateSyncStatusUI("💾 Local Mode (Firebase Config Error)", false);
@@ -898,19 +917,63 @@
             }
         }
 
-        function handleLoginSubmit(e) {
+        async function handleLoginSubmit(e) {
             e.preventDefault();
             const enteredId = String(document.getElementById("login-id").value || "").trim().toLowerCase();
             const enteredPass = String(document.getElementById("login-password").value || "");
             const errElem = document.getElementById("login-error");
+            const submitBtn = document.getElementById("login-submit-btn");
 
-            const matchedUser = usersData.find(u =>
+            errElem.classList.add("hidden");
+
+            // 1. यदि Email से लॉगिन कर रहे हैं तो पहले Firebase Auth से साइन-इन करें
+            if (firebaseAuth && enteredId.includes("@")) {
+                try {
+                    if (submitBtn) submitBtn.disabled = true;
+                    await firebaseAuth.signInWithEmailAndPassword(enteredId, enteredPass);
+                } catch (authErr) {
+                    if (submitBtn) submitBtn.disabled = false;
+                    errElem.textContent = "❌ Firebase Auth Error: " + (authErr.message || "Invalid Email/Password");
+                    errElem.classList.remove("hidden");
+                    return;
+                } finally {
+                    if (submitBtn) submitBtn.disabled = false;
+                }
+            }
+
+            // 2. स्थानीय/सिंक किए गए usersData में यूज़र और पासवर्ड जांचें
+            let matchedUser = usersData.find(u =>
                 String(u.id).trim().toLowerCase() === enteredId &&
                 String(u.password) === enteredPass
             );
 
+            // 3. यदि नए ब्राउज़र पर पहली बार अधिकृत ईमेल से लॉगिन हो रहा है और डेटा क्लाउड में मौजूद है
+            if (!matchedUser && firebaseAuth && firebaseAuth.currentUser && firebaseDb) {
+                try {
+                    const snap = await firebaseDb.ref(CLOUD_DB_ROOT + "/usersData").once("value");
+                    const remoteUsers = snap.val();
+                    if (Array.isArray(remoteUsers) && remoteUsers.length > 0) {
+                        usersData = remoteUsers;
+                        saveAllStateToLocal();
+                        matchedUser = usersData.find(u => String(u.id).trim().toLowerCase() === enteredId);
+                    }
+                } catch (dbErr) {
+                    errElem.textContent = "❌ Database Permission Denied: Rules में इस ईमेल को अनुमति नहीं है।";
+                    errElem.classList.remove("hidden");
+                    return;
+                }
+            }
+
             if (!matchedUser) {
-                errElem.textContent = "❌ गलत Login ID या Password!";
+                errElem.textContent = "❌ यह Email / Login ID अधिकृत नहीं है या Password गलत है!";
+                errElem.classList.remove("hidden");
+                return;
+            }
+
+            const hasAnyPerm = matchedUser.role === "admin" ||
+                PERMISSION_KEYS.some(k => matchedUser.permissions && matchedUser.permissions[k]);
+            if (!hasAnyPerm) {
+                errElem.textContent = "❌ इस अकाउंट को कोई मॉड्यूल परमिशन नहीं दी गई है। Admin से संपर्क करें।";
                 errElem.classList.remove("hidden");
                 return;
             }
@@ -920,12 +983,16 @@
             sessionStorage.setItem("wms_active_user_v34", matchedUser.id);
             document.getElementById("login-password").value = "";
             applyAccessUI();
+            attachRealtimeDatabaseListener();
         }
 
         function logoutUser() {
             currentSessionUserId = "";
             sessionStorage.removeItem("wms_active_user_v34");
             document.getElementById("user-modal").classList.add("hidden");
+            if (firebaseAuth && firebaseAuth.currentUser) {
+                firebaseAuth.signOut().catch(() => {});
+            }
             applyAccessUI();
         }
 
@@ -972,7 +1039,7 @@
             const urole = document.getElementById("mgr-user-role").value;
 
             if (!uid || !uname || !upass) {
-                alert("कृपया Login ID, Name और Password भरें।");
+                alert("कृपया Email / Login ID, Name और Password भरें।");
                 return;
             }
 
@@ -998,7 +1065,7 @@
             syncStateToCloud();
             renderUsersList();
             applyAccessUI();
-            alert(`✅ यूज़र "${uid}" और उसकी Permissions सेव और क्लाउड सिंक हो गई हैं!`);
+            alert(`✅ अधिकृत यूज़र "${uid}" और उसकी Permissions सेव व क्लाउड सिंक हो गई हैं!`);
         }
 
         function editUserRow(uid) {
@@ -1022,7 +1089,7 @@
                 alert("Default Admin अकाउंट डिलीट नहीं किया जा सकता।");
                 return;
             }
-            if (!confirm(`क्या आप यूज़र "${uid}" को हटाना चाहते हैं?`)) return;
+            if (!confirm(`क्या आप यूज़र "${uid}" का एक्सेस हटाना चाहते हैं?`)) return;
             usersData = usersData.filter(u => String(u.id).toLowerCase() !== String(uid).toLowerCase());
             syncStateToCloud();
             renderUsersList();
@@ -1088,9 +1155,68 @@
             return Array.from(totalsMap.entries()).map(([unit, totalQty]) => ({ unit, totalQty }));
         }
 
+        function getPickSlipVolumeWeightTotals(items) {
+            let totalUnits = 0;
+            let totalLtr = 0;
+            let totalKg = 0;
+
+            items.forEach(item => {
+                const qty = Number(item.qty ?? item.PickedQty ?? 0);
+                totalUnits += qty;
+
+                const matCode = String(item.mat || item.MaterialCode || "").trim().toUpperCase();
+                const masterMatch = materialMasterData.find(m =>
+                    String(m.MaterialCode || m.Code || "").trim().toUpperCase() === matCode
+                ) || {};
+
+                const candidateTexts = [
+                    item.packSize,
+                    masterMatch.PackSize,
+                    masterMatch.Size,
+                    item.desc,
+                    item.MaterialDescription,
+                    masterMatch.MaterialDescription,
+                    masterMatch.Description,
+                    item.unit,
+                    item.UNIT
+                ]
+                    .filter(Boolean)
+                    .map(s => String(s));
+
+                let matchedVolOrWt = false;
+                for (const txt of candidateTexts) {
+                    const m = txt.match(/(\d+(?:\.\d+)?)\s*(LTR|L|LITER|LITRE|KG|KGS)\b/i);
+                    if (m) {
+                        const packVal = parseFloat(m[1]);
+                        const uom = m[2].toUpperCase();
+                        if (uom.startsWith("K")) {
+                            totalKg += qty * packVal;
+                        } else {
+                            totalLtr += qty * packVal;
+                        }
+                        matchedVolOrWt = true;
+                        break;
+                    }
+                }
+
+                if (!matchedVolOrWt) {
+                    const u = String(item.unit || item.UNIT || "").trim().toUpperCase();
+                    if (u === "KG" || u === "KGS") totalKg += qty;
+                    if (u === "L" || u === "LTR" || u === "LITER" || u === "LITRE") totalLtr += qty;
+                }
+            });
+
+            return {
+                totalUnits,
+                totalLtr: Number(totalLtr.toFixed(2)),
+                totalKg: Number(totalKg.toFixed(2))
+            };
+        }
+
         function buildPickSlipPrintTableHTML(items) {
             const sorted = sortPickSlipItemsByMaterialAndUnit(items);
             const unitTotals = getUnitTotals(sorted);
+            const volWtTotals = getPickSlipVolumeWeightTotals(sorted);
 
             let rowsHTML = "";
             sorted.forEach(item => {
@@ -1121,7 +1247,7 @@
 
             let footerRowsHTML = "";
             unitTotals.forEach(({ unit, totalQty }, idx) => {
-                const label = idx === 0 ? "Total PickedQty" : "";
+                const label = idx === 0 ? "Total PickedQty (By Unit)" : "";
                 footerRowsHTML += `<tr class="bg-slate-100 font-bold text-slate-900">
                     <td colspan="6" class="px-2 py-1 border border-slate-500 text-right">${label}</td>
                     <td class="px-2 py-1 border border-slate-500 text-right">${totalQty}</td>
@@ -1130,6 +1256,16 @@
                     <td class="px-2 py-1 border border-slate-500"></td>
                 </tr>`;
             });
+
+            footerRowsHTML += `<tr class="bg-blue-50 font-extrabold text-slate-950">
+                <td colspan="6" class="px-2 py-1.5 border border-slate-500 text-right">
+                    Grand Total Units: ${volWtTotals.totalUnits} | Total Ltr: ${volWtTotals.totalLtr} Ltr | Total Kg: ${volWtTotals.totalKg} Kg
+                </td>
+                <td class="px-2 py-1.5 border border-slate-500 text-right">${volWtTotals.totalUnits}</td>
+                <td colspan="3" class="px-2 py-1.5 border border-slate-500 text-left font-mono">
+                    ${volWtTotals.totalLtr} Ltr / ${volWtTotals.totalKg} Kg
+                </td>
+            </tr>`;
 
             return `<table class="w-full text-left border-collapse border border-slate-500 text-xs text-slate-900 bg-white">
                 <thead>
@@ -1216,6 +1352,7 @@
             }
 
             const sortedItems = sortPickSlipItemsByMaterialAndUnit(sourceItems);
+            const volWtTotals = getPickSlipVolumeWeightTotals(sortedItems);
             const excelRows = sortedItems.map(item => ({
                 "PickSlipNo": item.batchId || item.invoice || "-",
                 "Date": formatDateOnly(item.date),
@@ -1243,6 +1380,19 @@
                     "UNIT": unit,
                     "InvoiceNo": ""
                 });
+            });
+
+            excelRows.push({
+                "PickSlipNo": "",
+                "Date": "",
+                "CustomerName": "",
+                "StorageBin": "",
+                "MaterialCode": "",
+                "MaterialDescription": `Grand Total Units: ${volWtTotals.totalUnits} | Total Ltr: ${volWtTotals.totalLtr} | Total Kg: ${volWtTotals.totalKg}`,
+                "PickedQty": volWtTotals.totalUnits,
+                "MRP": "",
+                "UNIT": `${volWtTotals.totalLtr} Ltr / ${volWtTotals.totalKg} Kg`,
+                "InvoiceNo": ""
             });
 
             const ws = XLSX.utils.json_to_sheet(excelRows);
