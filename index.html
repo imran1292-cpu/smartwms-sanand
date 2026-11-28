@@ -120,6 +120,9 @@
                     <button onclick="handleMasterUpload('plant')" class="w-full py-2 bg-blue-600 text-white rounded text-xs font-bold hover:bg-blue-700">
                         Upload Plant Master
                     </button>
+                    <button onclick="clearMasterData('plant')" class="w-full py-1.5 bg-red-50 text-red-700 border border-red-200 rounded text-xs font-bold hover:bg-red-100">
+                        🗑️ Clear Plant Master
+                    </button>
                 </div>
 
                 <div class="bg-white border rounded-lg p-4 space-y-3 shadow-sm">
@@ -130,6 +133,9 @@
                     <input type="file" id="upload-material" accept=".xlsx,.xls,.csv" class="block w-full text-xs text-slate-600">
                     <button onclick="handleMasterUpload('material')" class="w-full py-2 bg-blue-600 text-white rounded text-xs font-bold hover:bg-blue-700">
                         Upload Material Master
+                    </button>
+                    <button onclick="clearMasterData('material')" class="w-full py-1.5 bg-red-50 text-red-700 border border-red-200 rounded text-xs font-bold hover:bg-red-100">
+                        🗑️ Clear Material Master
                     </button>
                 </div>
 
@@ -160,6 +166,9 @@
                     <button onclick="handleBulkStockExcelUpload()" class="px-4 py-2 bg-emerald-600 text-white rounded text-xs font-bold hover:bg-emerald-700">
                         ⬆️ Upload Bulk Stock
                     </button>
+                    <button onclick="clearBulkStockData()" class="px-4 py-2 bg-red-100 text-red-700 border border-red-300 rounded text-xs font-bold hover:bg-red-200">
+                        🗑️ Clear All Inward / Bulk Stock
+                    </button>
                 </div>
             </div>
         </div>
@@ -169,15 +178,56 @@
             <div class="bg-white border rounded-lg p-4 space-y-4 shadow-sm">
                 <div class="flex flex-wrap justify-between items-center gap-2 border-b pb-3">
                     <div>
-                        <h3 class="font-bold text-slate-800">📥 Manual Stock Inward (Bins / Line-1)</h3>
-                        <p class="text-xs text-slate-500">मटीरियल कोड डालें, बिन या Line-1 चुनें, और स्टॉक पोस्ट करें।</p>
+                        <h3 class="font-bold text-slate-800">📥 Manual Stock &amp; Vehicle Inward</h3>
+                        <p class="text-xs text-slate-500">Vehicle Header: Plant code → Plant Name → Invoice No → Vehicle No → Transpport Name | Item Row: Material Code → Description → Pack Size → Unit → MRP → Qty. → Bin/Line-1/Zone → Remarks</p>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <input type="text" id="in-vehicle" placeholder="Vehicle / Ref No." class="p-2 border rounded text-xs w-40">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button onclick="clearBulkStockData()" class="px-3 py-2 bg-red-100 text-red-700 border border-red-300 rounded text-xs font-bold hover:bg-red-200">
+                            🗑️ Clear All Inward
+                        </button>
                         <button onclick="addInwardRow()" class="px-3 py-2 bg-blue-100 text-blue-800 rounded text-xs font-bold hover:bg-blue-200">
                             + Add Row
                         </button>
                     </div>
+                </div>
+
+                <!-- Manual Vehicle Inward Header Format -->
+                <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-2">
+                    <div class="text-[11px] font-bold text-slate-700 uppercase">🚚 Manual Vehicle Inward Details</div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-2">
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-600 mb-1">Plant code</label>
+                            <input type="text" id="in-plant-code" placeholder="Plant code" class="p-2 border rounded text-xs w-full bg-white" oninput="autoFillPlantName()">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-600 mb-1">Plant Name</label>
+                            <input type="text" id="in-plant-name" placeholder="Plant Name" class="p-2 border rounded text-xs w-full bg-white">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-600 mb-1">Invoice No</label>
+                            <input type="text" id="in-invoice-no" placeholder="Invoice No" class="p-2 border rounded text-xs w-full bg-white">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-600 mb-1">Vehicle No</label>
+                            <input type="text" id="in-vehicle" placeholder="Vehicle No" class="p-2 border rounded text-xs w-full bg-white">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-600 mb-1">Transpport Name</label>
+                            <input type="text" id="in-transporter" placeholder="Transpport Name" class="p-2 border rounded text-xs w-full bg-white">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Manual Stock Inward Item Columns Format -->
+                <div class="hidden xl:grid xl:grid-cols-8 gap-2 px-2 text-[11px] font-bold text-slate-600 uppercase">
+                    <div>Material Code</div>
+                    <div>Description</div>
+                    <div>Pack Size</div>
+                    <div>Unit</div>
+                    <div>MRP</div>
+                    <div>Qty.</div>
+                    <div>Bin/Line-1/Zone</div>
+                    <div>Remarks</div>
                 </div>
 
                 <div id="inward-rows-container" class="space-y-2"></div>
@@ -193,17 +243,24 @@
                     <table class="w-full text-left border-collapse">
                         <thead>
                             <tr class="bg-slate-100 text-xs text-slate-600 border-b">
-                                <th class="p-2">Bin / Floor</th>
+                                <th class="p-2">Plant code</th>
+                                <th class="p-2">Plant Name</th>
+                                <th class="p-2">Invoice No</th>
+                                <th class="p-2">Vehicle No</th>
+                                <th class="p-2">Transpport Name</th>
                                 <th class="p-2">Material Code</th>
                                 <th class="p-2">Description</th>
+                                <th class="p-2">Pack Size</th>
                                 <th class="p-2">Unit</th>
                                 <th class="p-2">MRP</th>
-                                <th class="p-2">Qty</th>
+                                <th class="p-2">Qty.</th>
+                                <th class="p-2">Bin/Line-1/Zone</th>
+                                <th class="p-2">Remarks</th>
                                 <th class="p-2">Action</th>
                             </tr>
                         </thead>
                         <tbody id="inward-list" class="text-sm">
-                            <tr><td colspan="7" class="p-4 text-center text-slate-400">कोई इनवर्ड रिकॉर्ड उपलब्ध नहीं है।</td></tr>
+                            <tr><td colspan="14" class="p-4 text-center text-slate-400">कोई इनवर्ड रिकॉर्ड उपलब्ध नहीं है।</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -249,7 +306,7 @@
             <div class="bg-white border rounded-lg p-4 space-y-4 shadow-sm">
                 <div class="flex flex-wrap justify-between items-center gap-3">
                     <div>
-                        <h3 class="font-bold text-slate-800">📊 Current Stock Report (Material Search, Rack-Wise, Line-1 &amp; Empty Bins)</h3>
+                        <h3 class="font-bold text-slate-800">📊 Current Stock Report (Material Search, Zone A–T, Line-1 &amp; Empty Bins)</h3>
                         <p id="stock-report-summary-badge" class="text-xs text-slate-500 mt-0.5">Showing 0 rows</p>
                     </div>
                     <div class="flex flex-wrap items-center gap-2">
@@ -257,28 +314,28 @@
 
                         <label class="text-xs font-semibold text-slate-600">Location:</label>
                         <select id="stock-report-location" class="p-2 border rounded text-xs font-semibold bg-slate-50" onchange="renderStockReport()">
-                            <option value="ALL">All Locations (Racks A–T + Line-1)</option>
+                            <option value="ALL">All Locations (Zones A–T + Line-1)</option>
                             <option value="Line-1">Line-1 (Extra Warehouse Floor)</option>
-                            <option value="RACK_A">Rack A (AA01 - AF20)</option>
-                            <option value="RACK_B">Rack B (BA01 - BF20)</option>
-                            <option value="RACK_C">Rack C (CA01 - CF20)</option>
-                            <option value="RACK_D">Rack D (DA01 - DF20)</option>
-                            <option value="RACK_E">Rack E (EA01 - EF20)</option>
-                            <option value="RACK_F">Rack F (FA01 - FF20)</option>
-                            <option value="RACK_G">Rack G (GA01 - GF20)</option>
-                            <option value="RACK_H">Rack H (HA01 - HF20)</option>
-                            <option value="RACK_I">Rack I (IA01 - IF20)</option>
-                            <option value="RACK_J">Rack J (JA01 - JF20)</option>
-                            <option value="RACK_K">Rack K (KA01 - KF20)</option>
-                            <option value="RACK_L">Rack L (LA01 - LF20)</option>
-                            <option value="RACK_M">Rack M (MA01 - MF20)</option>
-                            <option value="RACK_N">Rack N (NA01 - NF20)</option>
-                            <option value="RACK_O">Rack O (OA01 - OF20)</option>
-                            <option value="RACK_P">Rack P (PA01 - PF20)</option>
-                            <option value="RACK_Q">Rack Q (QA01 - QF20)</option>
-                            <option value="RACK_R">Rack R (RA01 - RF20)</option>
-                            <option value="RACK_S">Rack S (SA01 - SF20)</option>
-                            <option value="RACK_T">Rack T (TA01 - TF20)</option>
+                            <option value="RACK_A">Zone-A (Rack A: AA01 - AF20)</option>
+                            <option value="RACK_B">Zone-B (Rack B: BA01 - BF20)</option>
+                            <option value="RACK_C">Zone-C (Rack C: CA01 - CF20)</option>
+                            <option value="RACK_D">Zone-D (Rack D: DA01 - DF20)</option>
+                            <option value="RACK_E">Zone-E (Rack E: EA01 - EF20)</option>
+                            <option value="RACK_F">Zone-F (Rack F: FA01 - FF20)</option>
+                            <option value="RACK_G">Zone-G (Rack G: GA01 - GF20)</option>
+                            <option value="RACK_H">Zone-H (Rack H: HA01 - HF20)</option>
+                            <option value="RACK_I">Zone-I (Rack I: IA01 - IF20)</option>
+                            <option value="RACK_J">Zone-J (Rack J: JA01 - JF20)</option>
+                            <option value="RACK_K">Zone-K (Rack K: KA01 - KF20)</option>
+                            <option value="RACK_L">Zone-L (Rack L: LA01 - LF20)</option>
+                            <option value="RACK_M">Zone-M (Rack M: MA01 - MF20)</option>
+                            <option value="RACK_N">Zone-N (Rack N: NA01 - NF20)</option>
+                            <option value="RACK_O">Zone-O (Rack O: OA01 - OF20)</option>
+                            <option value="RACK_P">Zone-P (Rack P: PA01 - PF20)</option>
+                            <option value="RACK_Q">Zone-Q (Rack Q: QA01 - QF20)</option>
+                            <option value="RACK_R">Zone-R (Rack R: RA01 - RF20)</option>
+                            <option value="RACK_S">Zone-S (Rack S: SA01 - SF20)</option>
+                            <option value="RACK_T">Zone-T (Rack T: TA01 - TF20)</option>
                         </select>
 
                         <label class="text-xs font-semibold text-slate-600">Scope:</label>
@@ -299,12 +356,13 @@
                                 <th class="p-2">Material Code</th>
                                 <th class="p-2">Description</th>
                                 <th class="p-2">Unit</th>
+                                <th class="p-2">Pack Size</th>
                                 <th class="p-2">MRP</th>
                                 <th class="p-2">Qty.</th>
                             </tr>
                         </thead>
                         <tbody id="stock-report-list" class="text-sm">
-                            <tr><td colspan="6" class="p-4 text-center text-slate-400">कोई स्टॉक उपलब्ध नहीं है।</td></tr>
+                            <tr><td colspan="7" class="p-4 text-center text-slate-400">कोई स्टॉक उपलब्ध नहीं है।</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -334,15 +392,17 @@
                                 <th class="p-2">Customer</th>
                                 <th class="p-2">Invoice No</th>
                                 <th class="p-2">Storage Bin / Floor</th>
-                                <th class="p-2">Material Code &amp; Desc</th>
+                                <th class="p-2">Material Code</th>
+                                <th class="p-2">Desc</th>
                                 <th class="p-2">UNIT</th>
+                                <th class="p-2">Pack Size</th>
                                 <th class="p-2">MRP</th>
                                 <th class="p-2">Qty</th>
                                 <th class="p-2">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="dispatch-summary-list" class="text-sm">
-                            <tr><td colspan="11" class="p-4 text-center text-slate-400">कोई डिस्पच रिकॉर्ड उपलब्ध नहीं है।</td></tr>
+                            <tr><td colspan="13" class="p-4 text-center text-slate-400">कोई डिस्पच रिकॉर्ड उपलब्ध नहीं है।</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -361,29 +421,32 @@
                 </div>
             </div>
 
-            <div class="flex justify-between items-center">
-                <h3 class="font-bold text-slate-700">2,400 Bin Layout (Warehouse Bin Viewer)</h3>
-                <select id="select-rack" class="p-2 border rounded bg-white" onchange="renderBins()">
-                    <option value="A">Rack A (AA01 - AF20)</option>
-                    <option value="B">Rack B (BA01 - BF20)</option>
-                    <option value="C">Rack C (CA01 - CF20)</option>
-                    <option value="D">Rack D (DA01 - DF20)</option>
-                    <option value="E">Rack E (EA01 - EF20)</option>
-                    <option value="F">Rack F (FA01 - FF20)</option>
-                    <option value="G">Rack G (GA01 - GF20)</option>
-                    <option value="H">Rack H (HA01 - HF20)</option>
-                    <option value="I">Rack I (IA01 - IF20)</option>
-                    <option value="J">Rack J (JA01 - JF20)</option>
-                    <option value="K">Rack K (KA01 - KF20)</option>
-                    <option value="L">Rack L (LA01 - LF20)</option>
-                    <option value="M">Rack M (MA01 - MF20)</option>
-                    <option value="N">Rack N (NA01 - NF20)</option>
-                    <option value="O">Rack O (OA01 - OF20)</option>
-                    <option value="P">Rack P (PA01 - PF20)</option>
-                    <option value="Q">Rack Q (QA01 - QF20)</option>
-                    <option value="R">Rack R (RA01 - RF20)</option>
-                    <option value="S">Rack S (SA01 - SF20)</option>
-                    <option value="T">Rack T (TA01 - TF20)</option>
+            <div class="flex flex-wrap justify-between items-center gap-2">
+                <div>
+                    <h3 class="font-bold text-slate-700">Zone-A to Zone-T • 2,400 Bin Layout (Warehouse Bin Viewer)</h3>
+                    <p id="zone-active-badge" class="text-xs text-slate-500">Showing Zone-A (120 Bins: AA01 - AF20)</p>
+                </div>
+                <select id="select-rack" class="p-2 border rounded bg-white text-sm font-semibold" onchange="renderBins()">
+                    <option value="A">Zone-A (Rack A: AA01 - AF20)</option>
+                    <option value="B">Zone-B (Rack B: BA01 - BF20)</option>
+                    <option value="C">Zone-C (Rack C: CA01 - CF20)</option>
+                    <option value="D">Zone-D (Rack D: DA01 - DF20)</option>
+                    <option value="E">Zone-E (Rack E: EA01 - EF20)</option>
+                    <option value="F">Zone-F (Rack F: FA01 - FF20)</option>
+                    <option value="G">Zone-G (Rack G: GA01 - GF20)</option>
+                    <option value="H">Zone-H (Rack H: HA01 - HF20)</option>
+                    <option value="I">Zone-I (Rack I: IA01 - IF20)</option>
+                    <option value="J">Zone-J (Rack J: JA01 - JF20)</option>
+                    <option value="K">Zone-K (Rack K: KA01 - KF20)</option>
+                    <option value="L">Zone-L (Rack L: LA01 - LF20)</option>
+                    <option value="M">Zone-M (Rack M: MA01 - MF20)</option>
+                    <option value="N">Zone-N (Rack N: NA01 - NF20)</option>
+                    <option value="O">Zone-O (Rack O: OA01 - OF20)</option>
+                    <option value="P">Zone-P (Rack P: PA01 - PF20)</option>
+                    <option value="Q">Zone-Q (Rack Q: QA01 - QF20)</option>
+                    <option value="R">Zone-R (Rack R: RA01 - RF20)</option>
+                    <option value="S">Zone-S (Rack S: SA01 - SF20)</option>
+                    <option value="T">Zone-T (Rack T: TA01 - TF20)</option>
                 </select>
             </div>
             <div id="bin-grid" class="grid grid-cols-5 md:grid-cols-10 gap-2"></div>
@@ -656,6 +719,7 @@
         const CLOUD_DB_ROOT = "smartwms_sanand_prod_v1";
 
         const FLOOR_BIN_NAME = "Line-1";
+        const WAREHOUSE_ZONES = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T"];
         const PERMISSION_KEYS = [
             "canMaster", "canInward", "canDispatch", "canStock",
             "canSummary", "canRacks", "canConvert", "canTransfer",
@@ -678,6 +742,7 @@
         let sapSalesData = JSON.parse(localStorage.getItem("wms_sap_sales_v34") || "[]");
         let dispatchRecords = JSON.parse(localStorage.getItem("wms_dispatches_v34") || "[]");
         let materialMasterData = JSON.parse(localStorage.getItem("wms_material_master_v34") || "[]");
+        let plantMasterData = JSON.parse(localStorage.getItem("wms_plant_master_v34") || "[]");
         let conversionRecords = JSON.parse(localStorage.getItem("wms_conversions_v34") || "[]");
         let transferRecords = JSON.parse(localStorage.getItem("wms_transfers_v34") || "[]");
         let slipCounter = Number(localStorage.getItem("wms_slip_counter_v34") || "1");
@@ -733,6 +798,7 @@
             localStorage.setItem("wms_sap_sales_v34", JSON.stringify(sapSalesData));
             localStorage.setItem("wms_dispatches_v34", JSON.stringify(dispatchRecords));
             localStorage.setItem("wms_material_master_v34", JSON.stringify(materialMasterData));
+            localStorage.setItem("wms_plant_master_v34", JSON.stringify(plantMasterData));
             localStorage.setItem("wms_conversions_v34", JSON.stringify(conversionRecords));
             localStorage.setItem("wms_transfers_v34", JSON.stringify(transferRecords));
             localStorage.setItem("wms_slip_counter_v34", String(slipCounter));
@@ -748,6 +814,7 @@
                 sapSalesData,
                 dispatchRecords,
                 materialMasterData,
+                plantMasterData,
                 conversionRecords,
                 transferRecords,
                 slipCounter,
@@ -797,6 +864,7 @@
                 sapSalesData = Array.isArray(cloudData.sapSalesData) ? cloudData.sapSalesData : [];
                 dispatchRecords = Array.isArray(cloudData.dispatchRecords) ? cloudData.dispatchRecords : [];
                 materialMasterData = Array.isArray(cloudData.materialMasterData) ? cloudData.materialMasterData : [];
+                if (Array.isArray(cloudData.plantMasterData)) plantMasterData = cloudData.plantMasterData;
                 conversionRecords = Array.isArray(cloudData.conversionRecords) ? cloudData.conversionRecords : [];
                 transferRecords = Array.isArray(cloudData.transferRecords) ? cloudData.transferRecords : [];
                 slipCounter = Number(cloudData.slipCounter) || 1;
@@ -926,7 +994,6 @@
 
             errElem.classList.add("hidden");
 
-            // 1. यदि Email से लॉगिन कर रहे हैं तो पहले Firebase Auth से साइन-इन करें
             if (firebaseAuth && enteredId.includes("@")) {
                 try {
                     if (submitBtn) submitBtn.disabled = true;
@@ -941,13 +1008,11 @@
                 }
             }
 
-            // 2. स्थानीय/सिंक किए गए usersData में यूज़र और पासवर्ड जांचें
             let matchedUser = usersData.find(u =>
                 String(u.id).trim().toLowerCase() === enteredId &&
                 String(u.password) === enteredPass
             );
 
-            // 3. यदि नए ब्राउज़र पर पहली बार अधिकृत ईमेल से लॉगिन हो रहा है और डेटा क्लाउड में मौजूद है
             if (!matchedUser && firebaseAuth && firebaseAuth.currentUser && firebaseDb) {
                 try {
                     const snap = await firebaseDb.ref(CLOUD_DB_ROOT + "/usersData").once("value");
@@ -1145,6 +1210,29 @@
             return `${dd}/${mm}/${yyyy}`;
         }
 
+        function extractPackSize(item) {
+            if (item && item.packSize && String(item.packSize).trim() !== "" && String(item.packSize).trim() !== "-") {
+                return String(item.packSize).trim();
+            }
+            const matCode = String(item?.mat || item?.MaterialCode || "").trim().toUpperCase();
+            const masterMatch = materialMasterData.find(m =>
+                String(m.MaterialCode || m.Code || "").trim().toUpperCase() === matCode
+            );
+            if (masterMatch && (masterMatch.PackSize || masterMatch.Size)) {
+                return String(masterMatch.PackSize || masterMatch.Size).trim();
+            }
+            const descText = String(item?.desc || item?.MaterialDescription || "");
+            const parenMatch = descText.match(/\(([^)]+)\)/);
+            if (parenMatch && parenMatch[1]) {
+                return parenMatch[1].trim();
+            }
+            const unitMatch = descText.match(/(\d+(?:\.\d+)?\s*(?:LTR|L|LITER|LITRE|KG|KGS|ML|GM|G))\b/i);
+            if (unitMatch) {
+                return unitMatch[1].trim();
+            }
+            return "-";
+        }
+
         function getUnitTotals(items) {
             const totalsMap = new Map();
             items.forEach(item => {
@@ -1164,19 +1252,11 @@
                 const qty = Number(item.qty ?? item.PickedQty ?? 0);
                 totalUnits += qty;
 
-                const matCode = String(item.mat || item.MaterialCode || "").trim().toUpperCase();
-                const masterMatch = materialMasterData.find(m =>
-                    String(m.MaterialCode || m.Code || "").trim().toUpperCase() === matCode
-                ) || {};
-
+                const packValStr = extractPackSize(item);
                 const candidateTexts = [
-                    item.packSize,
-                    masterMatch.PackSize,
-                    masterMatch.Size,
+                    packValStr,
                     item.desc,
                     item.MaterialDescription,
-                    masterMatch.MaterialDescription,
-                    masterMatch.Description,
                     item.unit,
                     item.UNIT
                 ]
@@ -1223,25 +1303,27 @@
                 const slipNo = item.batchId || item.invoice || "-";
                 const dtOnly = formatDateOnly(item.date);
                 const cust = item.customer || "-";
+                const invNo = item.invoice || "-";
                 const bin = item.bin || "-";
                 const matCode = item.mat || "-";
                 const matDesc = item.desc || "-";
-                const pickedQty = item.qty ?? 0;
-                const mrp = item.mrp ?? 0;
                 const unit = item.unit || "-";
-                const invNo = item.invoice || "-";
+                const packSize = extractPackSize(item);
+                const mrp = item.mrp ?? 0;
+                const pickedQty = item.qty ?? 0;
 
                 rowsHTML += `<tr>
                     <td class="px-2 py-1 border border-slate-500 font-semibold">${slipNo}</td>
                     <td class="px-2 py-1 border border-slate-500 whitespace-nowrap">${dtOnly}</td>
                     <td class="px-2 py-1 border border-slate-500">${cust}</td>
+                    <td class="px-2 py-1 border border-slate-500">${invNo}</td>
                     <td class="px-2 py-1 border border-slate-500 font-mono">${bin}</td>
-                    <td class="px-2 py-1 border border-slate-500 text-right">${matCode}</td>
+                    <td class="px-2 py-1 border border-slate-500 font-bold">${matCode}</td>
                     <td class="px-2 py-1 border border-slate-500">${matDesc}</td>
-                    <td class="px-2 py-1 border border-slate-500 text-right">${pickedQty}</td>
-                    <td class="px-2 py-1 border border-slate-500 text-right">${mrp}</td>
                     <td class="px-2 py-1 border border-slate-500">${unit}</td>
-                    <td class="px-2 py-1 border border-slate-500 text-right">${invNo}</td>
+                    <td class="px-2 py-1 border border-slate-500">${packSize}</td>
+                    <td class="px-2 py-1 border border-slate-500 text-right">${mrp}</td>
+                    <td class="px-2 py-1 border border-slate-500 text-right font-bold">${pickedQty}</td>
                 </tr>`;
             });
 
@@ -1249,37 +1331,38 @@
             unitTotals.forEach(({ unit, totalQty }, idx) => {
                 const label = idx === 0 ? "Total PickedQty (By Unit)" : "";
                 footerRowsHTML += `<tr class="bg-slate-100 font-bold text-slate-900">
-                    <td colspan="6" class="px-2 py-1 border border-slate-500 text-right">${label}</td>
-                    <td class="px-2 py-1 border border-slate-500 text-right">${totalQty}</td>
-                    <td class="px-2 py-1 border border-slate-500"></td>
+                    <td colspan="7" class="px-2 py-1 border border-slate-500 text-right">${label}</td>
                     <td class="px-2 py-1 border border-slate-500">${unit}</td>
                     <td class="px-2 py-1 border border-slate-500"></td>
+                    <td class="px-2 py-1 border border-slate-500"></td>
+                    <td class="px-2 py-1 border border-slate-500 text-right">${totalQty}</td>
                 </tr>`;
             });
 
             footerRowsHTML += `<tr class="bg-blue-50 font-extrabold text-slate-950">
-                <td colspan="6" class="px-2 py-1.5 border border-slate-500 text-right">
+                <td colspan="7" class="px-2 py-1.5 border border-slate-500 text-right">
                     Grand Total Units: ${volWtTotals.totalUnits} | Total Ltr: ${volWtTotals.totalLtr} Ltr | Total Kg: ${volWtTotals.totalKg} Kg
                 </td>
-                <td class="px-2 py-1.5 border border-slate-500 text-right">${volWtTotals.totalUnits}</td>
                 <td colspan="3" class="px-2 py-1.5 border border-slate-500 text-left font-mono">
                     ${volWtTotals.totalLtr} Ltr / ${volWtTotals.totalKg} Kg
                 </td>
+                <td class="px-2 py-1.5 border border-slate-500 text-right">${volWtTotals.totalUnits}</td>
             </tr>`;
 
             return `<table class="w-full text-left border-collapse border border-slate-500 text-xs text-slate-900 bg-white">
                 <thead>
                     <tr class="bg-slate-100 font-semibold">
-                        <th class="px-2 py-1 border border-slate-500">PickSlipNo</th>
+                        <th class="px-2 py-1 border border-slate-500">Pick Slip No</th>
                         <th class="px-2 py-1 border border-slate-500">Date</th>
-                        <th class="px-2 py-1 border border-slate-500">CustomerName</th>
-                        <th class="px-2 py-1 border border-slate-500">StorageBin</th>
-                        <th class="px-2 py-1 border border-slate-500">MaterialCode</th>
-                        <th class="px-2 py-1 border border-slate-500">MaterialDescription</th>
-                        <th class="px-2 py-1 border border-slate-500">PickedQty</th>
-                        <th class="px-2 py-1 border border-slate-500">MRP</th>
+                        <th class="px-2 py-1 border border-slate-500">Customer</th>
+                        <th class="px-2 py-1 border border-slate-500">Invoice No</th>
+                        <th class="px-2 py-1 border border-slate-500">Storage Bin / Floor</th>
+                        <th class="px-2 py-1 border border-slate-500">Material Code</th>
+                        <th class="px-2 py-1 border border-slate-500">Desc</th>
                         <th class="px-2 py-1 border border-slate-500">UNIT</th>
-                        <th class="px-2 py-1 border border-slate-500">InvoiceNo</th>
+                        <th class="px-2 py-1 border border-slate-500">Pack Size</th>
+                        <th class="px-2 py-1 border border-slate-500">MRP</th>
+                        <th class="px-2 py-1 border border-slate-500">Qty</th>
                     </tr>
                 </thead>
                 <tbody>${rowsHTML}</tbody>
@@ -1354,45 +1437,48 @@
             const sortedItems = sortPickSlipItemsByMaterialAndUnit(sourceItems);
             const volWtTotals = getPickSlipVolumeWeightTotals(sortedItems);
             const excelRows = sortedItems.map(item => ({
-                "PickSlipNo": item.batchId || item.invoice || "-",
+                "Pick Slip No": item.batchId || item.invoice || "-",
                 "Date": formatDateOnly(item.date),
-                "CustomerName": item.customer || "-",
-                "StorageBin": item.bin || "-",
-                "MaterialCode": String(item.mat || "").trim(),
-                "MaterialDescription": item.desc || "-",
-                "PickedQty": Number(item.qty || 0),
-                "MRP": item.mrp ?? 0,
+                "Customer": item.customer || "-",
+                "Invoice No": item.invoice || "-",
+                "Storage Bin / Floor": item.bin || "-",
+                "Material Code": String(item.mat || "").trim(),
+                "Desc": item.desc || "-",
                 "UNIT": String(item.unit || "-").trim(),
-                "InvoiceNo": item.invoice || "-"
+                "Pack Size": extractPackSize(item),
+                "MRP": item.mrp ?? 0,
+                "Qty": Number(item.qty || 0)
             }));
 
             const unitTotals = getUnitTotals(sortedItems);
             unitTotals.forEach(({ unit, totalQty }, idx) => {
                 excelRows.push({
-                    "PickSlipNo": "",
+                    "Pick Slip No": "",
                     "Date": "",
-                    "CustomerName": "",
-                    "StorageBin": "",
-                    "MaterialCode": "",
-                    "MaterialDescription": idx === 0 ? "Total PickedQty" : "",
-                    "PickedQty": totalQty,
-                    "MRP": "",
+                    "Customer": "",
+                    "Invoice No": "",
+                    "Storage Bin / Floor": "",
+                    "Material Code": "",
+                    "Desc": idx === 0 ? "Total PickedQty" : "",
                     "UNIT": unit,
-                    "InvoiceNo": ""
+                    "Pack Size": "",
+                    "MRP": "",
+                    "Qty": totalQty
                 });
             });
 
             excelRows.push({
-                "PickSlipNo": "",
+                "Pick Slip No": "",
                 "Date": "",
-                "CustomerName": "",
-                "StorageBin": "",
-                "MaterialCode": "",
-                "MaterialDescription": `Grand Total Units: ${volWtTotals.totalUnits} | Total Ltr: ${volWtTotals.totalLtr} | Total Kg: ${volWtTotals.totalKg}`,
-                "PickedQty": volWtTotals.totalUnits,
-                "MRP": "",
+                "Customer": "",
+                "Invoice No": "",
+                "Storage Bin / Floor": "",
+                "Material Code": "",
+                "Desc": `Grand Total Units: ${volWtTotals.totalUnits} | Total Ltr: ${volWtTotals.totalLtr} | Total Kg: ${volWtTotals.totalKg}`,
                 "UNIT": `${volWtTotals.totalLtr} Ltr / ${volWtTotals.totalKg} Kg`,
-                "InvoiceNo": ""
+                "Pack Size": "",
+                "MRP": "",
+                "Qty": volWtTotals.totalUnits
             });
 
             const ws = XLSX.utils.json_to_sheet(excelRows);
@@ -1403,10 +1489,9 @@
         }
 
         function getAll2400Bins() {
-            const racks = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T"];
             const levels = ["A","B","C","D","E","F"];
             const bins = [];
-            racks.forEach(rack => {
+            WAREHOUSE_ZONES.forEach(rack => {
                 levels.forEach(lvl => {
                     for (let i = 1; i <= 20; i++) {
                         const col = i < 10 ? "0" + i : String(i);
@@ -1479,7 +1564,7 @@
                 alert("❌ आपको Backup लेने की अनुमति नहीं है।");
                 return;
             }
-            const backupData = { inwardRecords, sapSalesData, dispatchRecords, materialMasterData, conversionRecords, transferRecords, slipCounter, adminPin, usersData };
+            const backupData = { inwardRecords, sapSalesData, dispatchRecords, materialMasterData, plantMasterData, conversionRecords, transferRecords, slipCounter, adminPin, usersData };
             const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: "application/json" });
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
@@ -1505,6 +1590,7 @@
                         sapSalesData = data.sapSalesData || [];
                         dispatchRecords = data.dispatchRecords;
                         materialMasterData = data.materialMasterData || [];
+                        plantMasterData = data.plantMasterData || [];
                         conversionRecords = data.conversionRecords || [];
                         transferRecords = data.transferRecords || [];
                         slipCounter = data.slipCounter || 1;
@@ -1550,9 +1636,9 @@
         function downloadStockUploadTemplate() {
             const wb = XLSX.utils.book_new();
             const wsData = [
-                ["Storage Bin", "Material Code", "Description", "Unit", "MRP", "Qty."],
-                ["AA01", "7688213", "Lubricant Oil Bucket 20 Ltr", "BUCKET", "2500", "50"],
-                ["Line-1", "7436401", "Industrial Grease Drum 210 Ltr", "DRUM", "500", "120"]
+                ["Material Code", "Description", "Pack Size", "Unit", "MRP", "Qty.", "Bin/Line-1/Zone", "Remarks"],
+                ["7688213", "Lubricant Oil Bucket", "20 Ltr", "BUCKET", "2500", "50", "AA01", "Opening Stock"],
+                ["7436401", "Industrial Grease Drum", "210 Ltr", "DRUM", "500", "120", "Line-1", "Floor Stock"]
             ];
             const ws = XLSX.utils.aoa_to_sheet(wsData);
             XLSX.utils.book_append_sheet(wb, ws, "Stock_Upload");
@@ -1563,14 +1649,38 @@
         function downloadSAPTemplate() {
             const wb = XLSX.utils.book_new();
             const wsData = [
-                ["InvoiceNo", "CustomerName", "MaterialCode", "MaterialDescription", "OrderQty", "UNIT", "MRP"],
-                ["7011837489", "Shree Chandarana Distributors-SSA", "7688213", "Lubricant Oil", "20", "BUCKET", "2500"],
-                ["193870501", "COLD- AMNS India PVT LTD", "7436401", "Industrial Grease", "15", "DRUM", "500"]
+                ["InvoiceNo", "CustomerName", "MaterialCode", "MaterialDescription", "OrderQty", "UNIT", "PackSize", "MRP"],
+                ["7011837489", "Shree Chandarana Distributors-SSA", "7688213", "Lubricant Oil", "20", "BUCKET", "20 Ltr", "2500"],
+                ["193870501", "COLD- AMNS India PVT LTD", "7436401", "Industrial Grease", "15", "DRUM", "210 Ltr", "500"]
             ];
             const ws = XLSX.utils.aoa_to_sheet(wsData);
             XLSX.utils.book_append_sheet(wb, ws, "SAP_Sales");
             XLSX.writeFile(wb, "SAP_Sales_Report_Template.xlsx");
             alert("SAP सेल्स रिपोर्ट सैंपल डाउनलोड हो गया है!");
+        }
+
+        function clearMasterData(type) {
+            if (type === "material") {
+                if (!confirm("⚠️ क्या आप पूरा Material Master डेटा हटाना चाहते हैं?")) return;
+                materialMasterData = [];
+                syncStateToCloud();
+                alert("✅ Material Master डेटा साफ और क्लाउड सिंक हो गया है!");
+            } else if (type === "plant") {
+                if (!confirm("⚠️ क्या आप पूरा Plant Master डेटा हटाना चाहते हैं?")) return;
+                plantMasterData = [];
+                syncStateToCloud();
+                alert("✅ Plant Master डेटा साफ और क्लाउड सिंक हो गया है!");
+            }
+        }
+
+        function clearBulkStockData() {
+            if (!confirm("⚠️ क्या आप पूरा Inward / Bulk Stock डेटा हटाना चाहते हैं? इससे Stock Report और Bin/Line-1 स्टॉक भी खाली हो जाएगा।")) return;
+            inwardRecords = [];
+            syncStateToCloud();
+            renderInwardTable();
+            if (activeTabName === "stock") renderStockReport();
+            if (activeTabName === "racks") renderBins();
+            alert("✅ पूरा Inward / Bulk Stock डेटा साफ और क्लाउड सिंक हो गया है!");
         }
 
         function handleMasterUpload(type) {
@@ -1597,13 +1707,30 @@
                                     MaterialCode: newCode,
                                     MaterialDescription: String(newItem.MaterialDescription || newItem.Description || "-").trim(),
                                     Unit: String(newItem.Unit || newItem.UNIT || newItem.PackingType || "-").trim(),
-                                    PackSize: String(newItem.PackSize || newItem.Size || "-").trim()
+                                    PackSize: String(newItem.PackSize || newItem["Pack Size"] || newItem.Size || "-").trim()
                                 });
                                 addedCount++;
                             }
                         });
                         syncStateToCloud();
                         alert(`MATERIAL मास्टर सफलतापूर्वक अपेंड और क्लाउड सिंक हो गया है! ${addedCount} नए रिकॉर्ड जोड़े गए।`);
+                    } else if (type === "plant") {
+                        let addedCount = 0;
+                        sheetData.forEach(pItem => {
+                            const pCode = String(pItem.PlantCode || pItem["Plant code"] || pItem.Code || "").trim().toUpperCase();
+                            const pName = String(pItem.PlantName || pItem["Plant Name"] || pItem.Name || "").trim();
+                            if (pCode && pName) {
+                                const existingIdx = plantMasterData.findIndex(p => String(p.PlantCode).toUpperCase() === pCode);
+                                if (existingIdx >= 0) {
+                                    plantMasterData[existingIdx].PlantName = pName;
+                                } else {
+                                    plantMasterData.push({ PlantCode: pCode, PlantName: pName });
+                                    addedCount++;
+                                }
+                            }
+                        });
+                        syncStateToCloud();
+                        alert(`PLANT मास्टर सफलतापूर्वक अपडेट और क्लाउड सिंक हो गया है! ${addedCount} नए प्लांट जोड़े गए।`);
                     } else {
                         alert(`${type.toUpperCase()} मास्टर फ़ाइल सफलतापूर्वक अपेंड (Append) हो गई है!`);
                     }
@@ -1630,29 +1757,36 @@
 
                     let count = 0;
                     sheetData.forEach(row => {
-                        const bin = normalizeBinCode(row["Storage Bin"] || row.StorageBin || row.Bin || "");
+                        const bin = normalizeBinCode(row["Bin/Line-1/Zone"] || row["Storage Bin"] || row["Bin no / Line-1"] || row["Bin"] || row.StorageBin || row.Bin || "");
                         const mat = String(row["Material Code"] || row.MaterialCode || row.Mat || "").trim();
                         const desc = String(row["Description"] || row.Desc || row.MaterialDescription || "-").trim();
+                        const packSize = String(row["Pack Size"] || row["PackSize"] || row.Pack || "-").trim();
                         const unit = String(row["Unit"] || row.UNIT || row.SKU || "-").trim();
                         const mrp = row["MRP"] !== undefined && row["MRP"] !== null && row["MRP"] !== ""
                             ? String(row["MRP"]).trim()
                             : (row.MRP !== undefined && row.MRP !== null && row.MRP !== "" ? String(row.MRP).trim() : "0");
                         const qty = Number(row["Qty."] ?? row["Qty"] ?? row.Qty ?? row["Phy. Stock"] ?? row.PhyStock ?? row.Quantity ?? 0);
+                        const remarks = String(row["Remarks"] || row.Remarks || row.Remark || "-").trim();
 
                         if (mat && qty > 0 && bin) {
+                            const resolvedPack = extractPackSize({ mat, desc, packSize });
                             inwardRecords.push({
                                 id: Date.now() + Math.random(),
                                 plant: "3240",
+                                plantName: "Sanand",
+                                invoiceNo: "-",
                                 vehicle: bin === FLOOR_BIN_NAME ? "FLOOR-LINE1" : "EXCEL-BULK",
                                 transporter: "Direct Upload",
                                 challan: "BULK",
                                 mat,
                                 desc,
+                                packSize: resolvedPack,
                                 sku: unit,
                                 batch: "B1",
                                 mrp,
                                 qty,
-                                bin
+                                bin,
+                                remarks
                             });
                             count++;
                         }
@@ -1689,6 +1823,11 @@
                         const materialDescription = String(item.MaterialDescription || item.Description || "-").trim();
                         const qty = Number(item.OrderQty || item.Qty || 0);
                         const unit = String(item.UNIT || item.Unit || item.UOM || "-").trim();
+                        const packSize = extractPackSize({
+                            mat: materialCode,
+                            desc: materialDescription,
+                            packSize: item.PackSize || item["Pack Size"] || item.Size || "-"
+                        });
                         const mrp = item.MRP !== undefined && item.MRP !== null && item.MRP !== "" ? item.MRP : "0";
 
                         return {
@@ -1699,6 +1838,7 @@
                             MaterialDescription: materialDescription,
                             OrderQty: qty,
                             UNIT: unit,
+                            packSize,
                             MRP: mrp,
                             uniqueId: `${invoiceNo}_${materialCode}_${index}`,
                             originalQty: qty,
@@ -1760,6 +1900,7 @@
                         <th class="p-2">MaterialDescription</th>
                         <th class="p-2">OrderQty</th>
                         <th class="p-2">UNIT</th>
+                        <th class="p-2">Pack Size</th>
                         <th class="p-2">MRP</th>
                         <th class="p-2">Pending Qty</th>
                         <th class="p-2">Multi-Bin / Line-1 Stock &amp; Picking Breakdown</th>
@@ -1772,6 +1913,7 @@
                 const matDesc = inv.MaterialDescription || inv.Description || "-";
                 const origQty = Number(inv.originalQty || inv.OrderQty || inv.Qty || 0);
                 const unit = inv.UNIT || inv.Unit || "-";
+                const packSize = extractPackSize(inv);
                 const mrp = inv.MRP ?? 0;
                 const pendingQty = Number(inv.remainingQty);
 
@@ -1801,6 +1943,7 @@
                     <td class="p-2 pt-3 text-xs text-slate-600">${matDesc}</td>
                     <td class="p-2 pt-3 text-slate-500">${origQty}</td>
                     <td class="p-2 pt-3 font-semibold text-slate-700">${unit}</td>
+                    <td class="p-2 pt-3 font-semibold text-slate-700">${packSize}</td>
                     <td class="p-2 pt-3 font-semibold">${mrp}</td>
                     <td class="p-2 pt-3 font-bold text-amber-600" id="pending-qty-${idx}">${pendingQty}</td>
                     <td class="p-2 pt-2 space-y-1">${binListHTML}</td>
@@ -1914,6 +2057,11 @@
                         }
 
                         const itemMrp = inv.MRP ?? binStockRecord.mrp ?? 0;
+                        const itemPackSize = extractPackSize({
+                            mat: matCode,
+                            desc: matDesc,
+                            packSize: inv.packSize || binStockRecord.packSize || "-"
+                        });
                         binStockRecord.qty = Number(binStockRecord.qty) - pickQty;
 
                         const newRec = {
@@ -1926,6 +2074,7 @@
                             mat: matCode,
                             desc: matDesc,
                             unit,
+                            packSize: itemPackSize,
                             mrp: itemMrp,
                             qty: pickQty,
                             uniqueId
@@ -2002,16 +2151,20 @@
                     inwardRecords.push({
                         id: Date.now(),
                         plant: "3240",
+                        plantName: "Sanand",
+                        invoiceNo: "-",
                         vehicle: "REVERSAL",
                         transporter: "-",
                         challan: "-",
                         mat: rec.mat,
                         desc: rec.desc,
+                        packSize: extractPackSize(rec),
                         sku: rec.unit || "-",
                         mrp: rec.mrp ?? 0,
                         batch: "REV",
                         qty: rec.qty,
-                        bin: rec.bin
+                        bin: rec.bin,
+                        remarks: "Dispatch Reversal"
                     });
                 }
 
@@ -2044,6 +2197,7 @@
                         "Material Code": "-",
                         "Description": "EMPTY BIN",
                         "Unit": "-",
+                        "Pack Size": "-",
                         "MRP": "-",
                         "Qty.": 0,
                         isEmpty: true
@@ -2060,6 +2214,7 @@
                     "Material Code": item.mat,
                     "Description": item.desc || "-",
                     "Unit": item.sku || "-",
+                    "Pack Size": extractPackSize(item),
                     "MRP": item.mrp ?? 0,
                     "Qty.": Number(item.qty),
                     isEmpty: false
@@ -2091,7 +2246,7 @@
                 const emptyMsg = scope === "empty_only"
                     ? "चयनित फ़िल्टर में कोई खाली बिन उपलब्ध नहीं है।"
                     : "चयनित फ़िल्टर या Material Code के लिए कोई स्टॉक उपलब्ध नहीं है।";
-                tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400">${emptyMsg}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-400">${emptyMsg}</td></tr>`;
                 return;
             }
 
@@ -2108,6 +2263,7 @@
                     <td class="p-2 font-bold">${item["Material Code"]}</td>
                     <td class="p-2 ${descStyle}">${item["Description"]}</td>
                     <td class="p-2 font-semibold">${item["Unit"]}</td>
+                    <td class="p-2 font-semibold text-slate-700">${item["Pack Size"]}</td>
                     <td class="p-2 font-semibold">${item.isEmpty ? "-" : item["MRP"]}</td>
                     <td class="p-2 ${qtyStyle}">${item["Qty."]}</td>
                 </tr>`;
@@ -2144,12 +2300,13 @@
         function renderDispatchSummary() {
             const tbody = document.getElementById("dispatch-summary-list");
             if (dispatchRecords.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="11" class="p-4 text-center text-slate-400">कोई डिस्पच रिकॉर्ड उपलब्ध नहीं है।</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="13" class="p-4 text-center text-slate-400">कोई डिस्पच रिकॉर्ड उपलब्ध नहीं है।</td></tr>`;
                 return;
             }
             let html = "";
             dispatchRecords.forEach(item => {
                 const slipId = item.batchId || item.invoice;
+                const packSize = extractPackSize(item);
                 html += `<tr class="border-b hover:bg-slate-50">
                     <td class="p-2"><input type="checkbox" class="summary-checkbox" value="${slipId}"></td>
                     <td class="p-2 font-mono font-bold text-purple-700">${slipId}</td>
@@ -2157,11 +2314,13 @@
                     <td class="p-2 font-semibold">${item.customer}</td>
                     <td class="p-2">${item.invoice}</td>
                     <td class="p-2 bg-blue-50 font-mono font-bold text-blue-800">${item.bin}</td>
-                    <td class="p-2"><b>${item.mat}</b><br><span class="text-xs text-slate-500">${item.desc || "-"}</span></td>
+                    <td class="p-2 font-bold">${item.mat}</td>
+                    <td class="p-2 text-xs text-slate-600">${item.desc || "-"}</td>
                     <td class="p-2 font-semibold">${item.unit || "-"}</td>
+                    <td class="p-2 font-semibold text-slate-700">${packSize}</td>
                     <td class="p-2 font-semibold">${item.mrp ?? 0}</td>
                     <td class="p-2 font-bold text-purple-600">${item.qty}</td>
-                    <td class="p-2 space-x-1">
+                    <td class="p-2 space-x-1 whitespace-nowrap">
                         <button onclick="reprintSlip('${slipId}')" class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-bold hover:bg-blue-200">🖨️ Reprint</button>
                         <button onclick="reverseDispatch(${item.id})" class="px-2 py-1 bg-red-100 text-red-700 rounded text-xs font-bold hover:bg-red-200">🔒 Admin Reverse</button>
                     </td>
@@ -2170,26 +2329,44 @@
             tbody.innerHTML = html;
         }
 
+        function autoFillPlantName() {
+            const code = String(document.getElementById("in-plant-code")?.value || "").trim().toUpperCase();
+            const nameInput = document.getElementById("in-plant-name");
+            if (!nameInput || !code) return;
+            const matched = plantMasterData.find(p => String(p.PlantCode || "").trim().toUpperCase() === code);
+            if (matched && matched.PlantName) {
+                nameInput.value = matched.PlantName;
+            }
+        }
+
         function addInwardRow() {
             const container = document.getElementById("inward-rows-container");
             const rowDiv = document.createElement("div");
-            rowDiv.className = "grid grid-cols-1 md:grid-cols-6 gap-2 items-center bg-white p-2 border rounded-lg shadow-sm inward-item-row";
+            rowDiv.className = "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-2 items-center bg-white p-2 border rounded-lg shadow-sm inward-item-row";
             rowDiv.innerHTML = `
                 <div>
-                    <input type="text" placeholder="Material Code" class="p-1.5 border rounded text-sm w-full item-mat" oninput="autoFillMaterial(this)">
-                </div>
-                <div class="col-span-2">
-                    <input type="text" placeholder="Description &amp; PackSize" class="p-1.5 border bg-slate-50 rounded text-xs w-full item-desc" readonly>
+                    <input type="text" placeholder="Material Code" class="p-1.5 border rounded text-xs w-full item-mat" oninput="autoFillMaterial(this)">
                 </div>
                 <div>
-                    <input type="text" placeholder="Unit" class="p-1.5 border rounded text-sm w-full item-sku">
+                    <input type="text" placeholder="Description" class="p-1.5 border bg-slate-50 rounded text-xs w-full item-desc" readonly>
                 </div>
                 <div>
-                    <input type="number" placeholder="MRP" class="p-1.5 border rounded text-sm w-full item-mrp">
+                    <input type="text" placeholder="Pack Size" class="p-1.5 border rounded text-xs w-full item-pack">
+                </div>
+                <div>
+                    <input type="text" placeholder="Unit" class="p-1.5 border rounded text-xs w-full item-sku">
+                </div>
+                <div>
+                    <input type="number" placeholder="MRP" class="p-1.5 border rounded text-xs w-full item-mrp">
+                </div>
+                <div>
+                    <input type="number" placeholder="Qty." class="p-1.5 border rounded text-xs w-full item-qty">
+                </div>
+                <div>
+                    <input type="text" placeholder="Bin/Line-1/Zone" class="p-1.5 border rounded text-xs w-full item-bin">
                 </div>
                 <div class="flex gap-1">
-                    <input type="number" placeholder="Qty." class="p-1.5 border rounded text-sm w-1/2 item-qty">
-                    <input type="text" placeholder="Bin / Line-1" class="p-1.5 border rounded text-sm w-1/2 item-bin">
+                    <input type="text" placeholder="Remarks" class="p-1.5 border rounded text-xs w-full item-remarks">
                     <button onclick="this.closest('.inward-item-row').remove()" class="px-2 py-1 bg-red-100 text-red-600 rounded text-xs font-bold">✕</button>
                 </div>
             `;
@@ -2202,14 +2379,16 @@
             const code = String(inputElem.value).trim().toUpperCase();
             const row = inputElem.closest(".inward-item-row");
             const descInput = row.querySelector(".item-desc");
+            const packInput = row.querySelector(".item-pack");
             const skuInput = row.querySelector(".item-sku");
 
             const matched = materialMasterData.find(m => String(m.MaterialCode || m.Code || "").trim().toUpperCase() === code);
             if (matched) {
                 const desc = matched.MaterialDescription || matched.Description || "-";
                 const unit = matched.Unit || matched.UNIT || matched.PackingType || "";
-                const packSize = matched.PackSize || matched.Size || "";
-                descInput.value = packSize ? `${desc} (${packSize})` : desc;
+                const packSize = matched.PackSize || matched["Pack Size"] || matched.Size || "";
+                descInput.value = desc;
+                if (packInput) packInput.value = packSize || "-";
                 skuInput.value = unit || "-";
             } else {
                 descInput.value = "Material Not Found in Master";
@@ -2217,44 +2396,59 @@
         }
 
         function postAllInwards() {
-            const vehicle = document.getElementById("in-vehicle").value || "MANUAL";
+            const plantCode = String(document.getElementById("in-plant-code")?.value || "").trim() || "-";
+            const plantName = String(document.getElementById("in-plant-name")?.value || "").trim() || "-";
+            const invoiceNo = String(document.getElementById("in-invoice-no")?.value || "").trim() || "-";
+            const vehicle = String(document.getElementById("in-vehicle")?.value || "").trim() || "MANUAL";
+            const transporter = String(document.getElementById("in-transporter")?.value || "").trim() || "-";
             const rowElements = document.querySelectorAll(".inward-item-row");
             let count = 0;
 
             rowElements.forEach(row => {
-                const mat = row.querySelector(".item-mat").value;
+                const mat = row.querySelector(".item-mat").value.trim();
                 const descFull = row.querySelector(".item-desc").value;
-                const sku = row.querySelector(".item-sku").value || "-";
+                const packInputElem = row.querySelector(".item-pack");
+                const packSize = packInputElem ? (packInputElem.value.trim() || "-") : extractPackSize({ mat, desc: descFull });
+                const sku = row.querySelector(".item-sku").value.trim() || "-";
                 const mrp = row.querySelector(".item-mrp").value || "0";
                 const qty = Number(row.querySelector(".item-qty").value);
                 const bin = normalizeBinCode(row.querySelector(".item-bin").value);
+                const remarks = row.querySelector(".item-remarks")?.value.trim() || "-";
 
                 if (mat && qty && bin) {
                     inwardRecords.push({
                         id: Date.now() + Math.random(),
-                        plant: "3240",
+                        plant: plantCode,
+                        plantName,
+                        invoiceNo,
                         vehicle,
-                        transporter: "Manual",
-                        challan: "-",
-                        mat: mat.trim(),
+                        transporter,
+                        challan: invoiceNo,
+                        mat,
                         desc: descFull,
+                        packSize,
                         sku,
                         batch: "B1",
                         mrp,
                         qty,
-                        bin
+                        bin,
+                        remarks
                     });
                     count++;
                 }
             });
 
             if (count === 0) {
-                alert("कृपया मटीरियल कोड, क्वांटिटी और बिन या Line-1 भरें!");
+                alert("कृपया मटीरियल कोड, क्वांटिटी और Bin/Line-1/Zone भरें!");
                 return;
             }
 
             syncStateToCloud();
-            document.getElementById("in-vehicle").value = "";
+            if (document.getElementById("in-plant-code")) document.getElementById("in-plant-code").value = "";
+            if (document.getElementById("in-plant-name")) document.getElementById("in-plant-name").value = "";
+            if (document.getElementById("in-invoice-no")) document.getElementById("in-invoice-no").value = "";
+            if (document.getElementById("in-vehicle")) document.getElementById("in-vehicle").value = "";
+            if (document.getElementById("in-transporter")) document.getElementById("in-transporter").value = "";
             document.getElementById("inward-rows-container").innerHTML = "";
             addInwardRow();
             renderInwardTable();
@@ -2264,19 +2458,27 @@
         function renderInwardTable() {
             const tbody = document.getElementById("inward-list");
             if (inwardRecords.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-400">कोई इनवर्ड रिकॉर्ड उपलब्ध नहीं है।</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="14" class="p-4 text-center text-slate-400">कोई इनवर्ड रिकॉर्ड उपलब्ध नहीं है।</td></tr>`;
                 return;
             }
             let html = "";
             inwardRecords.forEach((item, idx) => {
                 const binCellClass = item.bin === FLOOR_BIN_NAME ? "bg-amber-100 text-amber-900 font-mono font-bold" : "uppercase bg-amber-50 font-mono";
+                const packSize = extractPackSize(item);
                 html += `<tr class="border-b hover:bg-slate-50">
-                    <td class="p-2 ${binCellClass}">${item.bin}</td>
+                    <td class="p-2 font-mono font-semibold">${item.plant || "-"}</td>
+                    <td class="p-2 text-xs">${item.plantName || "-"}</td>
+                    <td class="p-2 font-mono text-xs">${item.invoiceNo || item.challan || "-"}</td>
+                    <td class="p-2 font-mono font-semibold text-xs">${item.vehicle || "-"}</td>
+                    <td class="p-2 text-xs">${item.transporter || "-"}</td>
                     <td class="p-2 font-bold">${item.mat}</td>
                     <td class="p-2 text-xs text-slate-600">${item.desc || "-"}</td>
+                    <td class="p-2 font-semibold text-slate-700">${packSize}</td>
                     <td class="p-2 font-semibold">${item.sku || "-"}</td>
                     <td class="p-2 font-semibold">${item.mrp ?? 0}</td>
                     <td class="p-2 font-bold text-green-600">${item.qty}</td>
+                    <td class="p-2 ${binCellClass}">${item.bin}</td>
+                    <td class="p-2 text-xs text-slate-600">${item.remarks || "-"}</td>
                     <td class="p-2">
                         <button onclick="deleteInward(${item.id || idx})" class="px-2 py-1 bg-red-100 text-red-600 rounded text-xs font-bold hover:bg-red-200">Delete</button>
                     </td>
@@ -2301,6 +2503,11 @@
             }
 
             const rack = document.getElementById("select-rack").value;
+            const zoneBadge = document.getElementById("zone-active-badge");
+            if (zoneBadge) {
+                zoneBadge.textContent = `Showing Zone-${rack} (120 Bins: ${rack}A01 - ${rack}F20)`;
+            }
+
             const levels = ["F", "E", "D", "C", "B", "A"];
             let html = "";
             levels.forEach(lvl => {
@@ -2398,7 +2605,7 @@
             if (matched) {
                 const desc = matched.MaterialDescription || matched.Description || "-";
                 const unit = matched.Unit || matched.UNIT || matched.PackingType || "";
-                const packSize = matched.PackSize || matched.Size || "";
+                const packSize = matched.PackSize || matched["Pack Size"] || matched.Size || "";
                 descInput.value = packSize ? `${desc} (${packSize})` : desc;
                 if (unit) unitInput.value = unit;
             }
@@ -2442,16 +2649,20 @@
                 inwardRecords.push({
                     id: Date.now() + Math.random(),
                     plant: sourceRecord.plant || "3240",
+                    plantName: sourceRecord.plantName || "Sanand",
+                    invoiceNo: "-",
                     vehicle: "CONVERSION",
                     transporter: "Internal Repack",
                     challan: "CONV",
                     mat: targetMat,
                     desc: targetDesc,
+                    packSize: extractPackSize({ mat: targetMat, desc: targetDesc }),
                     sku: targetUnit,
                     batch: "CONV",
                     mrp: targetMrp,
                     qty: targetQty,
-                    bin: targetBin
+                    bin: targetBin,
+                    remarks: `From ${sourceRecord.mat} (${sourceRecord.bin})`
                 });
             }
 
@@ -2632,16 +2843,20 @@
                     inwardRecords.push({
                         id: Date.now() + Math.random(),
                         plant: sourceRecord.plant || "3240",
+                        plantName: sourceRecord.plantName || "Sanand",
+                        invoiceNo: "-",
                         vehicle: targetBin === FLOOR_BIN_NAME ? "FLOOR-LINE1" : "MULTI-BIN-TRF",
                         transporter: "Internal Transfer",
                         challan: "TRF",
                         mat: sourceRecord.mat,
                         desc: sourceRecord.desc || "-",
+                        packSize: extractPackSize(sourceRecord),
                         sku: sourceRecord.sku || "-",
                         batch: sourceRecord.batch || "B1",
                         mrp: sourceRecord.mrp || "0",
                         qty: outQty,
-                        bin: targetBin
+                        bin: targetBin,
+                        remarks: `From ${sourceRecord.bin}`
                     });
                 }
 
