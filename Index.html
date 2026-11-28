@@ -169,25 +169,51 @@
             <div class="bg-white border rounded-lg p-4 space-y-4 shadow-sm">
                 <div class="flex flex-wrap justify-between items-center gap-2 border-b pb-3">
                     <div>
-                        <h3 class="font-bold text-slate-800">📥 Manual Stock Inward (Bins / Line-1)</h3>
-                        <p class="text-xs text-slate-500">क्रम: Material Code → Description → Pack Size → Unit → MRP → Qty. → Bin no / Line-1</p>
+                        <h3 class="font-bold text-slate-800">📥 Manual Stock &amp; Vehicle Inward</h3>
+                        <p class="text-xs text-slate-500">Vehicle Header: Plant code → Plant Name → Invoice No → Vehicle No → Transpport Name | Item Row: Material Code → Description → Pack Size → Unit → MRP → Qty. → Bin/Line-1/Zone → Remarks</p>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <input type="text" id="in-vehicle" placeholder="Vehicle / Ref No." class="p-2 border rounded text-xs w-40">
-                        <button onclick="addInwardRow()" class="px-3 py-2 bg-blue-100 text-blue-800 rounded text-xs font-bold hover:bg-blue-200">
-                            + Add Row
-                        </button>
+                    <button onclick="addInwardRow()" class="px-3 py-2 bg-blue-100 text-blue-800 rounded text-xs font-bold hover:bg-blue-200">
+                        + Add Row
+                    </button>
+                </div>
+
+                <!-- Manual Vehicle Inward Header Format -->
+                <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-2">
+                    <div class="text-[11px] font-bold text-slate-700 uppercase">🚚 Manual Vehicle Inward Details</div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-2">
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-600 mb-1">Plant code</label>
+                            <input type="text" id="in-plant-code" placeholder="Plant code" class="p-2 border rounded text-xs w-full bg-white" oninput="autoFillPlantName()">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-600 mb-1">Plant Name</label>
+                            <input type="text" id="in-plant-name" placeholder="Plant Name" class="p-2 border rounded text-xs w-full bg-white">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-600 mb-1">Invoice No</label>
+                            <input type="text" id="in-invoice-no" placeholder="Invoice No" class="p-2 border rounded text-xs w-full bg-white">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-600 mb-1">Vehicle No</label>
+                            <input type="text" id="in-vehicle" placeholder="Vehicle No" class="p-2 border rounded text-xs w-full bg-white">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-600 mb-1">Transpport Name</label>
+                            <input type="text" id="in-transporter" placeholder="Transpport Name" class="p-2 border rounded text-xs w-full bg-white">
+                        </div>
                     </div>
                 </div>
 
-                <div class="hidden md:grid md:grid-cols-7 gap-2 px-2 text-[11px] font-bold text-slate-600 uppercase">
+                <!-- Manual Stock Inward Item Columns Format -->
+                <div class="hidden xl:grid xl:grid-cols-8 gap-2 px-2 text-[11px] font-bold text-slate-600 uppercase">
                     <div>Material Code</div>
                     <div>Description</div>
                     <div>Pack Size</div>
                     <div>Unit</div>
                     <div>MRP</div>
                     <div>Qty.</div>
-                    <div>Bin no / Line-1</div>
+                    <div>Bin/Line-1/Zone</div>
+                    <div>Remarks</div>
                 </div>
 
                 <div id="inward-rows-container" class="space-y-2"></div>
@@ -203,18 +229,24 @@
                     <table class="w-full text-left border-collapse">
                         <thead>
                             <tr class="bg-slate-100 text-xs text-slate-600 border-b">
+                                <th class="p-2">Plant code</th>
+                                <th class="p-2">Plant Name</th>
+                                <th class="p-2">Invoice No</th>
+                                <th class="p-2">Vehicle No</th>
+                                <th class="p-2">Transpport Name</th>
                                 <th class="p-2">Material Code</th>
                                 <th class="p-2">Description</th>
                                 <th class="p-2">Pack Size</th>
                                 <th class="p-2">Unit</th>
                                 <th class="p-2">MRP</th>
                                 <th class="p-2">Qty.</th>
-                                <th class="p-2">Bin no / Line-1</th>
+                                <th class="p-2">Bin/Line-1/Zone</th>
+                                <th class="p-2">Remarks</th>
                                 <th class="p-2">Action</th>
                             </tr>
                         </thead>
                         <tbody id="inward-list" class="text-sm">
-                            <tr><td colspan="8" class="p-4 text-center text-slate-400">कोई इनवर्ड रिकॉर्ड उपलब्ध नहीं है।</td></tr>
+                            <tr><td colspan="14" class="p-4 text-center text-slate-400">कोई इनवर्ड रिकॉर्ड उपलब्ध नहीं है।</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -696,6 +728,7 @@
         let sapSalesData = JSON.parse(localStorage.getItem("wms_sap_sales_v34") || "[]");
         let dispatchRecords = JSON.parse(localStorage.getItem("wms_dispatches_v34") || "[]");
         let materialMasterData = JSON.parse(localStorage.getItem("wms_material_master_v34") || "[]");
+        let plantMasterData = JSON.parse(localStorage.getItem("wms_plant_master_v34") || "[]");
         let conversionRecords = JSON.parse(localStorage.getItem("wms_conversions_v34") || "[]");
         let transferRecords = JSON.parse(localStorage.getItem("wms_transfers_v34") || "[]");
         let slipCounter = Number(localStorage.getItem("wms_slip_counter_v34") || "1");
@@ -751,6 +784,7 @@
             localStorage.setItem("wms_sap_sales_v34", JSON.stringify(sapSalesData));
             localStorage.setItem("wms_dispatches_v34", JSON.stringify(dispatchRecords));
             localStorage.setItem("wms_material_master_v34", JSON.stringify(materialMasterData));
+            localStorage.setItem("wms_plant_master_v34", JSON.stringify(plantMasterData));
             localStorage.setItem("wms_conversions_v34", JSON.stringify(conversionRecords));
             localStorage.setItem("wms_transfers_v34", JSON.stringify(transferRecords));
             localStorage.setItem("wms_slip_counter_v34", String(slipCounter));
@@ -766,6 +800,7 @@
                 sapSalesData,
                 dispatchRecords,
                 materialMasterData,
+                plantMasterData,
                 conversionRecords,
                 transferRecords,
                 slipCounter,
@@ -815,6 +850,7 @@
                 sapSalesData = Array.isArray(cloudData.sapSalesData) ? cloudData.sapSalesData : [];
                 dispatchRecords = Array.isArray(cloudData.dispatchRecords) ? cloudData.dispatchRecords : [];
                 materialMasterData = Array.isArray(cloudData.materialMasterData) ? cloudData.materialMasterData : [];
+                if (Array.isArray(cloudData.plantMasterData)) plantMasterData = cloudData.plantMasterData;
                 conversionRecords = Array.isArray(cloudData.conversionRecords) ? cloudData.conversionRecords : [];
                 transferRecords = Array.isArray(cloudData.transferRecords) ? cloudData.transferRecords : [];
                 slipCounter = Number(cloudData.slipCounter) || 1;
@@ -1493,7 +1529,7 @@
                 document.getElementById("tab-" + t).classList.add("hidden");
                 document.getElementById("btn-" + t).className = "px-4 py-2 bg-slate-200 text-slate-700 rounded-lg font-medium";
             });
-            document.getElementById("tab-" + tab).classList.remove("hidden");
+            document.getElementById("tab-" + t).classList.remove("hidden");
             document.getElementById("btn-" + tab).className = "px-4 py-2 bg-blue-600 text-white rounded-lg font-medium shadow";
 
             if (tab === "inward") {
@@ -1514,7 +1550,7 @@
                 alert("❌ आपको Backup लेने की अनुमति नहीं है।");
                 return;
             }
-            const backupData = { inwardRecords, sapSalesData, dispatchRecords, materialMasterData, conversionRecords, transferRecords, slipCounter, adminPin, usersData };
+            const backupData = { inwardRecords, sapSalesData, dispatchRecords, materialMasterData, plantMasterData, conversionRecords, transferRecords, slipCounter, adminPin, usersData };
             const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: "application/json" });
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
@@ -1540,6 +1576,7 @@
                         sapSalesData = data.sapSalesData || [];
                         dispatchRecords = data.dispatchRecords;
                         materialMasterData = data.materialMasterData || [];
+                        plantMasterData = data.plantMasterData || [];
                         conversionRecords = data.conversionRecords || [];
                         transferRecords = data.transferRecords || [];
                         slipCounter = data.slipCounter || 1;
@@ -1585,9 +1622,9 @@
         function downloadStockUploadTemplate() {
             const wb = XLSX.utils.book_new();
             const wsData = [
-                ["Material Code", "Description", "Pack Size", "Unit", "MRP", "Qty.", "Storage Bin"],
-                ["7688213", "Lubricant Oil Bucket", "20 Ltr", "BUCKET", "2500", "50", "AA01"],
-                ["7436401", "Industrial Grease Drum", "210 Ltr", "DRUM", "500", "120", "Line-1"]
+                ["Material Code", "Description", "Pack Size", "Unit", "MRP", "Qty.", "Bin/Line-1/Zone", "Remarks"],
+                ["7688213", "Lubricant Oil Bucket", "20 Ltr", "BUCKET", "2500", "50", "AA01", "Opening Stock"],
+                ["7436401", "Industrial Grease Drum", "210 Ltr", "DRUM", "500", "120", "Line-1", "Floor Stock"]
             ];
             const ws = XLSX.utils.aoa_to_sheet(wsData);
             XLSX.utils.book_append_sheet(wb, ws, "Stock_Upload");
@@ -1639,6 +1676,23 @@
                         });
                         syncStateToCloud();
                         alert(`MATERIAL मास्टर सफलतापूर्वक अपेंड और क्लाउड सिंक हो गया है! ${addedCount} नए रिकॉर्ड जोड़े गए।`);
+                    } else if (type === "plant") {
+                        let addedCount = 0;
+                        sheetData.forEach(pItem => {
+                            const pCode = String(pItem.PlantCode || pItem["Plant code"] || pItem.Code || "").trim().toUpperCase();
+                            const pName = String(pItem.PlantName || pItem["Plant Name"] || pItem.Name || "").trim();
+                            if (pCode && pName) {
+                                const existingIdx = plantMasterData.findIndex(p => String(p.PlantCode).toUpperCase() === pCode);
+                                if (existingIdx >= 0) {
+                                    plantMasterData[existingIdx].PlantName = pName;
+                                } else {
+                                    plantMasterData.push({ PlantCode: pCode, PlantName: pName });
+                                    addedCount++;
+                                }
+                            }
+                        });
+                        syncStateToCloud();
+                        alert(`PLANT मास्टर सफलतापूर्वक अपडेट और क्लाउड सिंक हो गया है! ${addedCount} नए प्लांट जोड़े गए।`);
                     } else {
                         alert(`${type.toUpperCase()} मास्टर फ़ाइल सफलतापूर्वक अपेंड (Append) हो गई है!`);
                     }
@@ -1665,7 +1719,7 @@
 
                     let count = 0;
                     sheetData.forEach(row => {
-                        const bin = normalizeBinCode(row["Storage Bin"] || row["Bin no / Line-1"] || row["Bin"] || row.StorageBin || row.Bin || "");
+                        const bin = normalizeBinCode(row["Bin/Line-1/Zone"] || row["Storage Bin"] || row["Bin no / Line-1"] || row["Bin"] || row.StorageBin || row.Bin || "");
                         const mat = String(row["Material Code"] || row.MaterialCode || row.Mat || "").trim();
                         const desc = String(row["Description"] || row.Desc || row.MaterialDescription || "-").trim();
                         const packSize = String(row["Pack Size"] || row["PackSize"] || row.Pack || "-").trim();
@@ -1674,12 +1728,15 @@
                             ? String(row["MRP"]).trim()
                             : (row.MRP !== undefined && row.MRP !== null && row.MRP !== "" ? String(row.MRP).trim() : "0");
                         const qty = Number(row["Qty."] ?? row["Qty"] ?? row.Qty ?? row["Phy. Stock"] ?? row.PhyStock ?? row.Quantity ?? 0);
+                        const remarks = String(row["Remarks"] || row.Remarks || row.Remark || "-").trim();
 
                         if (mat && qty > 0 && bin) {
                             const resolvedPack = extractPackSize({ mat, desc, packSize });
                             inwardRecords.push({
                                 id: Date.now() + Math.random(),
                                 plant: "3240",
+                                plantName: "Sanand",
+                                invoiceNo: "-",
                                 vehicle: bin === FLOOR_BIN_NAME ? "FLOOR-LINE1" : "EXCEL-BULK",
                                 transporter: "Direct Upload",
                                 challan: "BULK",
@@ -1690,7 +1747,8 @@
                                 batch: "B1",
                                 mrp,
                                 qty,
-                                bin
+                                bin,
+                                remarks
                             });
                             count++;
                         }
@@ -2055,6 +2113,8 @@
                     inwardRecords.push({
                         id: Date.now(),
                         plant: "3240",
+                        plantName: "Sanand",
+                        invoiceNo: "-",
                         vehicle: "REVERSAL",
                         transporter: "-",
                         challan: "-",
@@ -2065,7 +2125,8 @@
                         mrp: rec.mrp ?? 0,
                         batch: "REV",
                         qty: rec.qty,
-                        bin: rec.bin
+                        bin: rec.bin,
+                        remarks: "Dispatch Reversal"
                     });
                 }
 
@@ -2230,31 +2291,44 @@
             tbody.innerHTML = html;
         }
 
+        function autoFillPlantName() {
+            const code = String(document.getElementById("in-plant-code")?.value || "").trim().toUpperCase();
+            const nameInput = document.getElementById("in-plant-name");
+            if (!nameInput || !code) return;
+            const matched = plantMasterData.find(p => String(p.PlantCode || "").trim().toUpperCase() === code);
+            if (matched && matched.PlantName) {
+                nameInput.value = matched.PlantName;
+            }
+        }
+
         function addInwardRow() {
             const container = document.getElementById("inward-rows-container");
             const rowDiv = document.createElement("div");
-            rowDiv.className = "grid grid-cols-1 md:grid-cols-7 gap-2 items-center bg-white p-2 border rounded-lg shadow-sm inward-item-row";
+            rowDiv.className = "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-2 items-center bg-white p-2 border rounded-lg shadow-sm inward-item-row";
             rowDiv.innerHTML = `
                 <div>
-                    <input type="text" placeholder="Material Code" class="p-1.5 border rounded text-sm w-full item-mat" oninput="autoFillMaterial(this)">
+                    <input type="text" placeholder="Material Code" class="p-1.5 border rounded text-xs w-full item-mat" oninput="autoFillMaterial(this)">
                 </div>
                 <div>
                     <input type="text" placeholder="Description" class="p-1.5 border bg-slate-50 rounded text-xs w-full item-desc" readonly>
                 </div>
                 <div>
-                    <input type="text" placeholder="Pack Size" class="p-1.5 border rounded text-sm w-full item-pack">
+                    <input type="text" placeholder="Pack Size" class="p-1.5 border rounded text-xs w-full item-pack">
                 </div>
                 <div>
-                    <input type="text" placeholder="Unit" class="p-1.5 border rounded text-sm w-full item-sku">
+                    <input type="text" placeholder="Unit" class="p-1.5 border rounded text-xs w-full item-sku">
                 </div>
                 <div>
-                    <input type="number" placeholder="MRP" class="p-1.5 border rounded text-sm w-full item-mrp">
+                    <input type="number" placeholder="MRP" class="p-1.5 border rounded text-xs w-full item-mrp">
                 </div>
                 <div>
-                    <input type="number" placeholder="Qty." class="p-1.5 border rounded text-sm w-full item-qty">
+                    <input type="number" placeholder="Qty." class="p-1.5 border rounded text-xs w-full item-qty">
+                </div>
+                <div>
+                    <input type="text" placeholder="Bin/Line-1/Zone" class="p-1.5 border rounded text-xs w-full item-bin">
                 </div>
                 <div class="flex gap-1">
-                    <input type="text" placeholder="Bin no / Line-1" class="p-1.5 border rounded text-sm w-full item-bin">
+                    <input type="text" placeholder="Remarks" class="p-1.5 border rounded text-xs w-full item-remarks">
                     <button onclick="this.closest('.inward-item-row').remove()" class="px-2 py-1 bg-red-100 text-red-600 rounded text-xs font-bold">✕</button>
                 </div>
             `;
@@ -2284,47 +2358,59 @@
         }
 
         function postAllInwards() {
-            const vehicle = document.getElementById("in-vehicle").value || "MANUAL";
+            const plantCode = String(document.getElementById("in-plant-code")?.value || "").trim() || "-";
+            const plantName = String(document.getElementById("in-plant-name")?.value || "").trim() || "-";
+            const invoiceNo = String(document.getElementById("in-invoice-no")?.value || "").trim() || "-";
+            const vehicle = String(document.getElementById("in-vehicle")?.value || "").trim() || "MANUAL";
+            const transporter = String(document.getElementById("in-transporter")?.value || "").trim() || "-";
             const rowElements = document.querySelectorAll(".inward-item-row");
             let count = 0;
 
             rowElements.forEach(row => {
-                const mat = row.querySelector(".item-mat").value;
+                const mat = row.querySelector(".item-mat").value.trim();
                 const descFull = row.querySelector(".item-desc").value;
                 const packInputElem = row.querySelector(".item-pack");
                 const packSize = packInputElem ? (packInputElem.value.trim() || "-") : extractPackSize({ mat, desc: descFull });
-                const sku = row.querySelector(".item-sku").value || "-";
+                const sku = row.querySelector(".item-sku").value.trim() || "-";
                 const mrp = row.querySelector(".item-mrp").value || "0";
                 const qty = Number(row.querySelector(".item-qty").value);
                 const bin = normalizeBinCode(row.querySelector(".item-bin").value);
+                const remarks = row.querySelector(".item-remarks")?.value.trim() || "-";
 
                 if (mat && qty && bin) {
                     inwardRecords.push({
                         id: Date.now() + Math.random(),
-                        plant: "3240",
+                        plant: plantCode,
+                        plantName,
+                        invoiceNo,
                         vehicle,
-                        transporter: "Manual",
-                        challan: "-",
-                        mat: mat.trim(),
+                        transporter,
+                        challan: invoiceNo,
+                        mat,
                         desc: descFull,
                         packSize,
                         sku,
                         batch: "B1",
                         mrp,
                         qty,
-                        bin
+                        bin,
+                        remarks
                     });
                     count++;
                 }
             });
 
             if (count === 0) {
-                alert("कृपया मटीरियल कोड, क्वांटिटी और Bin no / Line-1 भरें!");
+                alert("कृपया मटीरियल कोड, क्वांटिटी और Bin/Line-1/Zone भरें!");
                 return;
             }
 
             syncStateToCloud();
-            document.getElementById("in-vehicle").value = "";
+            if (document.getElementById("in-plant-code")) document.getElementById("in-plant-code").value = "";
+            if (document.getElementById("in-plant-name")) document.getElementById("in-plant-name").value = "";
+            if (document.getElementById("in-invoice-no")) document.getElementById("in-invoice-no").value = "";
+            if (document.getElementById("in-vehicle")) document.getElementById("in-vehicle").value = "";
+            if (document.getElementById("in-transporter")) document.getElementById("in-transporter").value = "";
             document.getElementById("inward-rows-container").innerHTML = "";
             addInwardRow();
             renderInwardTable();
@@ -2334,7 +2420,7 @@
         function renderInwardTable() {
             const tbody = document.getElementById("inward-list");
             if (inwardRecords.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="8" class="p-4 text-center text-slate-400">कोई इनवर्ड रिकॉर्ड उपलब्ध नहीं है।</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="14" class="p-4 text-center text-slate-400">कोई इनवर्ड रिकॉर्ड उपलब्ध नहीं है।</td></tr>`;
                 return;
             }
             let html = "";
@@ -2342,6 +2428,11 @@
                 const binCellClass = item.bin === FLOOR_BIN_NAME ? "bg-amber-100 text-amber-900 font-mono font-bold" : "uppercase bg-amber-50 font-mono";
                 const packSize = extractPackSize(item);
                 html += `<tr class="border-b hover:bg-slate-50">
+                    <td class="p-2 font-mono font-semibold">${item.plant || "-"}</td>
+                    <td class="p-2 text-xs">${item.plantName || "-"}</td>
+                    <td class="p-2 font-mono text-xs">${item.invoiceNo || item.challan || "-"}</td>
+                    <td class="p-2 font-mono font-semibold text-xs">${item.vehicle || "-"}</td>
+                    <td class="p-2 text-xs">${item.transporter || "-"}</td>
                     <td class="p-2 font-bold">${item.mat}</td>
                     <td class="p-2 text-xs text-slate-600">${item.desc || "-"}</td>
                     <td class="p-2 font-semibold text-slate-700">${packSize}</td>
@@ -2349,6 +2440,7 @@
                     <td class="p-2 font-semibold">${item.mrp ?? 0}</td>
                     <td class="p-2 font-bold text-green-600">${item.qty}</td>
                     <td class="p-2 ${binCellClass}">${item.bin}</td>
+                    <td class="p-2 text-xs text-slate-600">${item.remarks || "-"}</td>
                     <td class="p-2">
                         <button onclick="deleteInward(${item.id || idx})" class="px-2 py-1 bg-red-100 text-red-600 rounded text-xs font-bold hover:bg-red-200">Delete</button>
                     </td>
@@ -2519,6 +2611,8 @@
                 inwardRecords.push({
                     id: Date.now() + Math.random(),
                     plant: sourceRecord.plant || "3240",
+                    plantName: sourceRecord.plantName || "Sanand",
+                    invoiceNo: "-",
                     vehicle: "CONVERSION",
                     transporter: "Internal Repack",
                     challan: "CONV",
@@ -2529,7 +2623,8 @@
                     batch: "CONV",
                     mrp: targetMrp,
                     qty: targetQty,
-                    bin: targetBin
+                    bin: targetBin,
+                    remarks: `From ${sourceRecord.mat} (${sourceRecord.bin})`
                 });
             }
 
@@ -2710,6 +2805,8 @@
                     inwardRecords.push({
                         id: Date.now() + Math.random(),
                         plant: sourceRecord.plant || "3240",
+                        plantName: sourceRecord.plantName || "Sanand",
+                        invoiceNo: "-",
                         vehicle: targetBin === FLOOR_BIN_NAME ? "FLOOR-LINE1" : "MULTI-BIN-TRF",
                         transporter: "Internal Transfer",
                         challan: "TRF",
@@ -2720,7 +2817,8 @@
                         batch: sourceRecord.batch || "B1",
                         mrp: sourceRecord.mrp || "0",
                         qty: outQty,
-                        bin: targetBin
+                        bin: targetBin,
+                        remarks: `From ${sourceRecord.bin}`
                     });
                 }
 
