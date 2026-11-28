@@ -120,6 +120,9 @@
                     <button onclick="handleMasterUpload('plant')" class="w-full py-2 bg-blue-600 text-white rounded text-xs font-bold hover:bg-blue-700">
                         Upload Plant Master
                     </button>
+                    <button onclick="clearMasterData('plant')" class="w-full py-1.5 bg-red-50 text-red-700 border border-red-200 rounded text-xs font-bold hover:bg-red-100">
+                        🗑️ Clear Plant Master
+                    </button>
                 </div>
 
                 <div class="bg-white border rounded-lg p-4 space-y-3 shadow-sm">
@@ -130,6 +133,9 @@
                     <input type="file" id="upload-material" accept=".xlsx,.xls,.csv" class="block w-full text-xs text-slate-600">
                     <button onclick="handleMasterUpload('material')" class="w-full py-2 bg-blue-600 text-white rounded text-xs font-bold hover:bg-blue-700">
                         Upload Material Master
+                    </button>
+                    <button onclick="clearMasterData('material')" class="w-full py-1.5 bg-red-50 text-red-700 border border-red-200 rounded text-xs font-bold hover:bg-red-100">
+                        🗑️ Clear Material Master
                     </button>
                 </div>
 
@@ -160,6 +166,9 @@
                     <button onclick="handleBulkStockExcelUpload()" class="px-4 py-2 bg-emerald-600 text-white rounded text-xs font-bold hover:bg-emerald-700">
                         ⬆️ Upload Bulk Stock
                     </button>
+                    <button onclick="clearBulkStockData()" class="px-4 py-2 bg-red-100 text-red-700 border border-red-300 rounded text-xs font-bold hover:bg-red-200">
+                        🗑️ Clear All Inward / Bulk Stock
+                    </button>
                 </div>
             </div>
         </div>
@@ -172,9 +181,14 @@
                         <h3 class="font-bold text-slate-800">📥 Manual Stock &amp; Vehicle Inward</h3>
                         <p class="text-xs text-slate-500">Vehicle Header: Plant code → Plant Name → Invoice No → Vehicle No → Transpport Name | Item Row: Material Code → Description → Pack Size → Unit → MRP → Qty. → Bin/Line-1/Zone → Remarks</p>
                     </div>
-                    <button onclick="addInwardRow()" class="px-3 py-2 bg-blue-100 text-blue-800 rounded text-xs font-bold hover:bg-blue-200">
-                        + Add Row
-                    </button>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button onclick="clearBulkStockData()" class="px-3 py-2 bg-red-100 text-red-700 border border-red-300 rounded text-xs font-bold hover:bg-red-200">
+                            🗑️ Clear All Inward
+                        </button>
+                        <button onclick="addInwardRow()" class="px-3 py-2 bg-blue-100 text-blue-800 rounded text-xs font-bold hover:bg-blue-200">
+                            + Add Row
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Manual Vehicle Inward Header Format -->
@@ -1529,7 +1543,7 @@
                 document.getElementById("tab-" + t).classList.add("hidden");
                 document.getElementById("btn-" + t).className = "px-4 py-2 bg-slate-200 text-slate-700 rounded-lg font-medium";
             });
-            document.getElementById("tab-" + t).classList.remove("hidden");
+            document.getElementById("tab-" + tab).classList.remove("hidden");
             document.getElementById("btn-" + tab).className = "px-4 py-2 bg-blue-600 text-white rounded-lg font-medium shadow";
 
             if (tab === "inward") {
@@ -1643,6 +1657,30 @@
             XLSX.utils.book_append_sheet(wb, ws, "SAP_Sales");
             XLSX.writeFile(wb, "SAP_Sales_Report_Template.xlsx");
             alert("SAP सेल्स रिपोर्ट सैंपल डाउनलोड हो गया है!");
+        }
+
+        function clearMasterData(type) {
+            if (type === "material") {
+                if (!confirm("⚠️ क्या आप पूरा Material Master डेटा हटाना चाहते हैं?")) return;
+                materialMasterData = [];
+                syncStateToCloud();
+                alert("✅ Material Master डेटा साफ और क्लाउड सिंक हो गया है!");
+            } else if (type === "plant") {
+                if (!confirm("⚠️ क्या आप पूरा Plant Master डेटा हटाना चाहते हैं?")) return;
+                plantMasterData = [];
+                syncStateToCloud();
+                alert("✅ Plant Master डेटा साफ और क्लाउड सिंक हो गया है!");
+            }
+        }
+
+        function clearBulkStockData() {
+            if (!confirm("⚠️ क्या आप पूरा Inward / Bulk Stock डेटा हटाना चाहते हैं? इससे Stock Report और Bin/Line-1 स्टॉक भी खाली हो जाएगा।")) return;
+            inwardRecords = [];
+            syncStateToCloud();
+            renderInwardTable();
+            if (activeTabName === "stock") renderStockReport();
+            if (activeTabName === "racks") renderBins();
+            alert("✅ पूरा Inward / Bulk Stock डेटा साफ और क्लाउड सिंक हो गया है!");
         }
 
         function handleMasterUpload(type) {
